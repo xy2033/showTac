@@ -1,0 +1,142 @@
+wandb:
+  entity: null
+  resume: 'auto'
+  mode: 'offline'                          # 集群无网络，使用离线模式
+
+# =============================================================================
+# Stage 1: Tactile Domain Adaptation (Warm-up)
+# Freezes: LLM backbone (showo) + semantic layers (image_embedder_und, und_trans, position_embedding)
+# Trains:  fusion_proj + diffusion_head + time_embed
+# Goal:    Adapt fusion projection and diffusion head to tactile domain statistics
+#
+# 集群运行说明:
+#   所有模型路径指向集群本地目录 ${MODEL_ROOT}
+#   启动脚本 run_tactile_stage_one.sh 会设置 MODEL_ROOT 并通过命令行覆盖以下路径
+#   如需更改路径，修改启动脚本中的 MODEL_ROOT 变量即可
+# =============================================================================
+
+experiment:
+    project: "showo2-tactile-stage-1"
+    name: "showo2-1.5b-tactile-stage-1"
+    output_dir: "outputs/showo2-1.5b-tactile-stage-1_video"
+    output_dataloader_state_dir: null
+    save_every: 3000
+    generate_every: 3000
+    generate_model_samples: True              # 同 generate_every 频率，额外生成触觉序列检查整体模型效果
+    log_every: 20
+    log_grad_norm_every: 500
+    resume_from_checkpoint: False
+    checkpoints_total_limit: 1
+
+model:
+    vae_model:
+        type: "wan21"
+        # 集群本地路径，启动脚本会通过命令行覆盖
+        pretrained_model_path: "/defaultShare/models/Wan2.1_VAE.pth"
+
+    showo:
+        model_name: "Showo2"
+        load_from_showo: True              # 直接构建模型（使用CLI覆盖的本地路径），而非 from_pretrained
+        # 预训练权重本地路径（用于 load_state_dict 加载）
+        pretrained_model_path: "/defaultShare/models/show-o2-1.5B"
+        llm_model_path: "/defaultShare/models/Qwen2.5-1.5B-Instruct"
+        llm_vocab_size: null               # auto-set from tokenizer
+        hidden_size: 1536
+        image_latent_dim: 16
+        image_latent_height: 27
+        image_latent_width: 27
+        patch_size: 2
+        num_diffusion_layers: 10
+        clip_latent_dim: 1152
+        add_qk_norm: True
+        add_time_embeds: True
+        # SigLIP 路径放在 showo 下，因为 __init__ 签名是 clip_pretrained_model_path
+        clip_pretrained_model_path: "/defaultShare/models/siglip-so400m-patch14-384"
+        # Stage 1: freeze LLM + semantic layers, train fusion + diffusion
+        frozen_params: ['image_embedder_und', 'und_trans', 'showo', 'position_embedding']
+        params_not_load: null
+
+    gradient_checkpointing: True
+
+dataset:
+    samp_probs: null
+    accumulation: 1
+    mixed_loader_mode: "max_size_cycle"
+    params:
+        # === Tactile-Visual Data Paths (set via hyperparameters) ===
+        tactile_data_root: "/defaultShare/data_indoor"
+        tactile_csv_path: "/18009672469/xy/Show-o/show-o2/contact_indoor_list_tvl.csv"
+
+        # Number of frames to sample uniformly from each video
+        num_frames: 5
+
+        validation_prompts_file: "prompts/t2i_prompts.txt"
+        shuffle_buffer_size: 1000
+        num_workers: 4
+        pin_memory: True
+        persistent_workers: True
+
+    preprocessing:
+        # Sequence length: text(~400) + 2*video_segments(2*5*729=7290) + special_tokens(6) ≈ 7700
+        # Rounded up to 8192 for safety
+        max_seq_length: 8192
+        resolution: 432                       # Square resize resolution for all frames
+        num_frames: ${dataset.params.num_frames}
+
+        # Per-frame token counts: 432/8=54 VAE latent, 54/2=27 patches, 27*27=729 tokens/frame
+        num_visual_tokens_per_frame: 729
+        num_tactile_tokens_per_frame: 729
+
+        # Total tokens per video segment (per-frame * num_frames)
+        num_visual_tokens: 3645               # = 729 * 5
+        num_tactile_tokens: 3645              # = 729 * 5
+
+        latent_height: ${model.showo.image_latent_height}   # 27
+        latent_width: ${model.showo.image_latent_width}     # 27
+        min_res: [64, 64]
+
+optimizer:
+    name: adamw
+    params:
+        learning_rate: 0.0001                # 1e-4: standard for Stage 1 projector warm-up
+        scale_lr: False
+        beta1: 0.9
+        beta2: 0.999
+        weight_decay: 0.0
+        epsilon: 1e-8
+
+lr_scheduler:
+    scheduler: "constant_with_warmup"
+    params:
+        learning_rate: ${optimizer.params.learning_rate}
+        warmup_steps: 500                     # Short warmup for tactile domain
+
+transport:
+    path_type: "Linear"                      # Linear flow matching path
+    prediction: "velocity"                   # Velocity prediction (v = x1 - x0)
+    loss_weight: null
+    train_eps: null
+    sample_eps: null
+    snr_type: "lognorm"                      # Log-normal SNR sampling
+    sampling_method: "euler"
+    guidance_scale: 5.0
+    num_inference_steps: 50
+    atol: 1e-6
+    rtol: 1e-3
+    reverse: False
+    do_shift: True
+    time_shifting_factor: 3.0
+
+training:
+    gradient_accumulation_steps: 1
+    batch_size_tactile: 2                     # Small batch: 2 samples/GPU (each has 2 videos)
+    mixed_precision: "bf16"
+    enable_tf32: True
+    seed: 42
+    max_train_steps: 30000                    # ~300 passes over 99 samples at batch 2
+    cond_dropout_prob: 0.1                    # 10% CFG dropout for text conditioning
+    label_smoothing: 0.0
+    max_grad_norm: 1.0
+    ntp_coeff: 0.0                           # No NTP loss — all -100 labels, flow only
+    flow_coeff: 1.0                          # Flow matching loss on tactile segment only
+    und_max_t0: 1.0
