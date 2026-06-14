@@ -30,8 +30,13 @@ MODEL_ROOT=/defaultShare/models
 
 # 触觉数据路径 — 根据你的集群数据路径修改
 TACTILE_DATA_ROOT=/defaultShare/data_indoor
-TACTILE_CSV_PATH=/18009672469/xy/Show-o/show-o2/contact_indoor_list_tvl.csv
-
+TACTILE_CSV_PATH=/Show-o/show-o2/contact_indoor_list_tvl.csv
+# ========== Idea 消融超参数 ==========
+# 设为 0 即关闭对应方法:
+#   VIRTUAL_FORCE_COEFF=0 CONTACT_WEIGHTED_FLOW_ALPHA=0 bash run_tactile_stage_one_ssa.sh
+VIRTUAL_FORCE_COEFF=${VIRTUAL_FORCE_COEFF:-0.1}
+# CONTACT_WEIGHTED_FLOW_ALPHA=${CONTACT_WEIGHTED_FLOW_ALPHA:-1.0}
+CONTACT_WEIGHTED_FLOW_ALPHA=0
 
 # ========== 启动训练 ==========
 "${PYTHON_EXECUTABLE}" "${ACCELERATE_LAUNCH_MODULE}" train_tactile_stage_one.py \
@@ -46,4 +51,6 @@ TACTILE_CSV_PATH=/18009672469/xy/Show-o/show-o2/contact_indoor_list_tvl.csv
     experiment.generate_model_samples=True \
     training.batch_size_tactile=1 \
     training.max_train_steps=50000 \
+    training.virtual_force_coeff="${VIRTUAL_FORCE_COEFF}" \
+    training.contact_weighted_flow_alpha="${CONTACT_WEIGHTED_FLOW_ALPHA}" \
     optimizer.params.learning_rate=0.0001

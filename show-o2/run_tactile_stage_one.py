@@ -21,7 +21,12 @@ TACTILE_CSV_PATH = "/Show-o/show-o2/contact_indoor_list_tvl.csv"
 # =======================
 PYTHON_EXECUTABLE = "/root/miniconda3/envs/showO/bin/python"
 ACCELERATE_LAUNCH_MODULE = "/root/miniconda3/envs/showO/lib/python3.10/site-packages/accelerate/commands/launch.py"
-
+# =======================
+# Idea 消融超参数 (读取环境变量，若无则使用默认值)
+# =======================
+VIRTUAL_FORCE_COEFF = os.getenv("VIRTUAL_FORCE_COEFF", "0.1")
+# CONTACT_WEIGHTED_FLOW_ALPHA = os.getenv("CONTACT_WEIGHTED_FLOW_ALPHA", "1.0")
+CONTACT_WEIGHTED_FLOW_ALPHA = 0
 # =======================
 # accelerate launch 参数
 # =======================
@@ -40,6 +45,8 @@ args = [
     "experiment.generate_model_samples=True",
     "training.batch_size_tactile=1",
     "training.max_train_steps=50000",
+    f"training.virtual_force_coeff={VIRTUAL_FORCE_COEFF}",             # 新增参数 1
+    f"training.contact_weighted_flow_alpha={CONTACT_WEIGHTED_FLOW_ALPHA}", # 新增参数 2
     "optimizer.params.learning_rate=0.0001",
 ]
 

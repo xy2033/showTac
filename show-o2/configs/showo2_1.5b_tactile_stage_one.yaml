@@ -65,7 +65,7 @@ dataset:
     params:
         # === Tactile-Visual Data Paths (set via hyperparameters) ===
         tactile_data_root: "/defaultShare/data_indoor"
-        tactile_csv_path: "/18009672469/xy/Show-o/show-o2/contact_indoor_list_tvl.csv"
+        tactile_csv_path: "/Show-o/show-o2/contact_indoor_list_tvl.csv"
 
         # Number of frames to sample uniformly from each video
         num_frames: 5
@@ -139,4 +139,8 @@ training:
     max_grad_norm: 1.0
     ntp_coeff: 0.0                           # No NTP loss — all -100 labels, flow only
     flow_coeff: 1.0                          # Flow matching loss on tactile segment only
+    virtual_force_coeff: 0.1                 # 0 disables VTAM-style virtual force proxy supervision
+    contact_weighted_flow_alpha: 1.0         # 0 disables Dream-Tac-style contact-weighted flow loss
+    contact_gate_m: 0.01                     # Contact gate midpoint for frame-difference rho
+    contact_gate_s: 0.005                    # Contact gate sigmoid softness
     und_max_t0: 1.0

@@ -65,6 +65,55 @@ from transport import Sampler, create_transport
 logger = get_logger(__name__, log_level="INFO")
 
 
+def compress_wan21_temporal_values(values: torch.Tensor, latent_frames: int) -> torch.Tensor:
+    """Match Wan2.1 VAE temporal grouping: first frame, then chunks of four."""
+    if values.shape[1] == latent_frames:
+        return values
+    chunks = [values[:, :1]]
+    cursor = 1
+    while len(chunks) < latent_frames:
+        if cursor >= values.shape[1]:
+            chunks.append(values[:, -1:].clone())
+        else:
+            chunks.append(values[:, cursor:cursor + 4].mean(dim=1, keepdim=True))
+            cursor += 4
+    return torch.cat(chunks, dim=1)
+
+
+def build_contact_flow_weights(
+        contact_gate: torch.Tensor,
+        modality_positions: torch.Tensor,
+        max_seq_len: int,
+        latent_frames: int,
+        tokens_per_latent_frame: int,
+        add_time_embeds: bool,
+        alpha: float,
+        device,
+        dtype,
+) -> torch.Tensor:
+    latent_gate = compress_wan21_temporal_values(contact_gate, latent_frames)
+    weights = torch.ones(
+        contact_gate.shape[0], max_seq_len,
+        device=device, dtype=dtype,
+    )
+    for i, modality_batch in enumerate(modality_positions):
+        offset, length = modality_batch[-1]
+        offset = int(offset.item())
+        length = int(length.item())
+        start = offset + int(add_time_embeds)
+        token_count = min(latent_frames * tokens_per_latent_frame, max(length - int(add_time_embeds), 0))
+        for frame_idx in range(latent_frames):
+            token_start = start + frame_idx * tokens_per_latent_frame
+            token_end = min(token_start + tokens_per_latent_frame, start + token_count)
+            weights[i, token_start:token_end] = 1.0 + alpha * latent_gate[i, frame_idx].to(dtype)
+    return weights
+
+
+def write_jsonl(path: Path, record: dict) -> None:
+    with path.open("a", encoding="utf-8") as f:
+        f.write(json.dumps(record, ensure_ascii=False) + "\n")
+
+
 def main():
     #########################
     # SETUP Accelerator     #
@@ -138,6 +187,28 @@ def main():
         config_path = Path(config.experiment.output_dir) / "config.yaml"
         logging.info(f"Saving config to {config_path}")
         OmegaConf.save(config, config_path)
+
+    virtual_force_coeff = float(config.training.get("virtual_force_coeff", 0.0))
+    contact_weighted_flow_alpha = float(config.training.get("contact_weighted_flow_alpha", 0.0))
+    contact_gate_m = float(config.training.get("contact_gate_m", 0.01))
+    contact_gate_s = float(config.training.get("contact_gate_s", 0.005))
+    compute_physics_targets = virtual_force_coeff > 0.0 or contact_weighted_flow_alpha > 0.0
+    idea_records_dir = Path(config.experiment.output_dir) / "idea_records"
+    idea_metrics_path = idea_records_dir / "train_metrics.jsonl"
+    if accelerator.is_main_process:
+        idea_records_dir.mkdir(parents=True, exist_ok=True)
+        idea_config = {
+            "virtual_force_coeff": virtual_force_coeff,
+            "contact_weighted_flow_alpha": contact_weighted_flow_alpha,
+            "contact_gate_m": contact_gate_m,
+            "contact_gate_s": contact_gate_s,
+            "reference_frame": "gelsight/0.png",
+            "flow_method": "cv2.calcOpticalFlowFarneback_rgb_channel_mean",
+        }
+        (idea_records_dir / "idea_config.json").write_text(
+            json.dumps(idea_config, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
 
     if config.training.seed is not None:
         set_seed(config.training.seed)
@@ -313,6 +384,9 @@ def main():
         frame_split_mode="contact_90_10",
         showo_token_ids=showo_token_ids,
         min_res=preproc_config.min_res,
+        compute_physics_targets=compute_physics_targets,
+        contact_gate_m=contact_gate_m,
+        contact_gate_s=contact_gate_s,
     )
     train_dataloader_tactile = create_dataloader(
         dataset, config.training.batch_size_tactile, dataset.collate_fn
@@ -516,6 +590,33 @@ def main():
                 modality_positions,
                 num_frames=num_frames_t,
             )
+            latent_frames_t = image_latents.shape[2] if image_latents.dim() == 5 else 1
+            tokens_per_latent_frame = (
+                (image_latents.shape[-2] // config.model.showo.patch_size)
+                * (image_latents.shape[-1] // config.model.showo.patch_size)
+            )
+
+            image_loss_weights = None
+            contact_gate = batch.get('contact_gate', None)
+            if contact_weighted_flow_alpha > 0.0 and contact_gate is not None:
+                image_loss_weights = build_contact_flow_weights(
+                    contact_gate.to(accelerator.device),
+                    modality_positions,
+                    text_tokens.size(1),
+                    latent_frames_t,
+                    tokens_per_latent_frame,
+                    bool(config.model.showo.add_time_embeds),
+                    contact_weighted_flow_alpha,
+                    accelerator.device,
+                    weight_type,
+                )
+
+            virtual_force_targets = None
+            if virtual_force_coeff > 0.0 and batch.get('virtual_force', None) is not None:
+                virtual_force_targets = compress_wan21_temporal_values(
+                    batch['virtual_force'].to(accelerator.device),
+                    latent_frames_t,
+                ).to(weight_type)
 
             # Create omni-attention mask
             block_mask = omni_attn_mask_naive(
@@ -524,7 +625,7 @@ def main():
             ).to(weight_type)
 
             # Model forward
-            logits, loss_ntp, loss_flow = model(
+            model_outputs = model(
                 text_tokens=text_tokens,
                 image_latents=image_latents,
                 t=t.to(weight_type),
@@ -533,16 +634,29 @@ def main():
                 image_masks=image_masks,
                 text_labels=text_labels,
                 image_labels=image_labels,
+                image_loss_weights=image_loss_weights,
+                virtual_force_targets=virtual_force_targets,
                 modality_positions=modality_positions,
                 output_hidden_states=True,
                 max_seq_len=text_tokens.size(1),
                 device=accelerator.device,
             )
+            if virtual_force_targets is not None:
+                logits, loss_ntp, loss_flow, loss_force, force_pred = model_outputs
+            else:
+                logits, loss_ntp, loss_flow = model_outputs
+                loss_force = loss_flow.detach() * 0.0
+                force_pred = None
 
             # Gather losses
             avg_loss_ntp = accelerator.gather(loss_ntp.repeat(total_batch_size_per_gpu)).mean()
             avg_loss_flow = accelerator.gather(loss_flow.repeat(total_batch_size_per_gpu)).mean()
-            loss = config.training.ntp_coeff * loss_ntp + config.training.flow_coeff * loss_flow
+            avg_loss_force = accelerator.gather(loss_force.repeat(total_batch_size_per_gpu)).mean()
+            loss = (
+                    config.training.ntp_coeff * loss_ntp
+                    + config.training.flow_coeff * loss_flow
+                    + virtual_force_coeff * loss_force
+            )
 
             accelerator.backward(loss.to(weight_type) / config.training.gradient_accumulation_steps)
 
@@ -577,16 +691,33 @@ def main():
                     logs = {
                         "step_loss_ntp": avg_loss_ntp.item(),
                         "step_loss_flow": avg_loss_flow.item(),
+                        "step_loss_virtual_force": avg_loss_force.item(),
                         "lr": lr[0],
                         "samples/sec/gpu": samples_per_second_per_gpu,
                         "data_time": data_time_m.val,
                         "batch_time": batch_time_m.val,
                     }
+                    if contact_gate is not None:
+                        logs["contact_gate_mean"] = contact_gate.float().mean().item()
+                    if image_loss_weights is not None:
+                        logs["contact_flow_weight_mean"] = image_loss_weights.float().mean().item()
+                    if batch.get('virtual_force', None) is not None:
+                        logs["virtual_force_norm"] = batch['virtual_force'].float().norm(dim=-1).mean().item()
+                    if force_pred is not None:
+                        logs["virtual_force_pred_norm"] = force_pred.detach().float().norm(dim=-1).mean().item()
                     accelerator.log(logs, step=global_step + 1)
+                    if accelerator.is_main_process:
+                        record = {"step": global_step + 1, **logs}
+                        if batch.get('object_names', None):
+                            record["object_name"] = batch['object_names'][0]
+                        if batch.get('frame_indices', None) is not None:
+                            record["frame_indices"] = batch['frame_indices'][0].tolist()
+                        write_jsonl(idea_metrics_path, record)
                     logger.info(
                         f"Epoch: {epoch} Step: {global_step + 1} "
                         f"Loss_NTP: {avg_loss_ntp.item():0.4f} "
                         f"Loss_FLOW: {avg_loss_flow.item():0.4f} "
+                        f"Loss_FORCE: {avg_loss_force.item():0.4f} "
                         f"Data (t): {data_time_m.val:0.4f}, {samples_per_second_per_gpu:0.2f}/s/gpu "
                         f"Batch (t): {batch_time_m.val:0.4f} LR: {lr[0]:0.6f}"
                     )
