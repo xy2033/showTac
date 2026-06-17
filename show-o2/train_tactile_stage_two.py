@@ -225,19 +225,49 @@ def main():
     preproc_config = config.dataset.preprocessing
     dataset_config = config.dataset.params
 
+    # Wan2.1 VAE encodes videos causally in temporal chunks: the first frame is
+    # represented alone, then the remaining frames are grouped by four. Keep
+    # Stage 2 token layout aligned with Stage 1 clip-level VAE training.
+    def resolve_wan21_latent_frames(num_input_frames: int) -> int:
+        if num_input_frames <= 0:
+            raise ValueError(f"num_frames must be positive, got {num_input_frames}")
+        return 1 + (num_input_frames - 1) // 4
+
+    latent_num_frames = (
+        resolve_wan21_latent_frames(dataset_config.num_frames)
+        if config.model.vae_model.type == 'wan21'
+        else dataset_config.num_frames
+    )
+    latent_visual_tokens = (
+        config.dataset.preprocessing.num_visual_tokens_per_frame
+        * latent_num_frames
+    )
+    latent_tactile_tokens = (
+        config.dataset.preprocessing.num_tactile_tokens_per_frame
+        * latent_num_frames
+    )
+    if config.dataset.preprocessing.num_visual_tokens != latent_visual_tokens:
+        accelerator.print(
+            "Adjusting visual token count for clip-level VAE encoding: "
+            f"{config.dataset.preprocessing.num_visual_tokens} -> {latent_visual_tokens} "
+            f"(input_frames={dataset_config.num_frames}, latent_frames={latent_num_frames})"
+        )
+        config.dataset.preprocessing.num_visual_tokens = latent_visual_tokens
+    if config.dataset.preprocessing.num_tactile_tokens != latent_tactile_tokens:
+        accelerator.print(
+            "Adjusting tactile token count for clip-level VAE encoding: "
+            f"{config.dataset.preprocessing.num_tactile_tokens} -> {latent_tactile_tokens} "
+            f"(input_frames={dataset_config.num_frames}, latent_frames={latent_num_frames})"
+        )
+        config.dataset.preprocessing.num_tactile_tokens = latent_tactile_tokens
+
     if config.model.showo.add_time_embeds:
-        latent_visual_tokens = (
-            config.dataset.preprocessing.num_visual_tokens_per_frame
-            * config.dataset.params.num_frames
-        )
-        latent_tactile_tokens = (
-            config.dataset.preprocessing.num_tactile_tokens_per_frame
-            * config.dataset.params.num_frames
-        )
-        if config.dataset.preprocessing.num_visual_tokens == latent_visual_tokens:
-            config.dataset.preprocessing.num_visual_tokens += 1
-        if config.dataset.preprocessing.num_tactile_tokens == latent_tactile_tokens:
-            config.dataset.preprocessing.num_tactile_tokens += 1
+        config.dataset.preprocessing.num_visual_tokens += 1
+        config.dataset.preprocessing.num_tactile_tokens += 1
+
+    if accelerator.is_main_process:
+        config_path = Path(config.experiment.output_dir) / "config.yaml"
+        OmegaConf.save(config, config_path)
 
     ##################################
     #   Optimizer and LR scheduler   #
@@ -481,13 +511,29 @@ def main():
         else:
             raise NotImplementedError
 
-        c, h, w = image_latents.shape[1:]
-        b, n = shape
+        if image_latents.dim() == 4:
+            image_latents = image_latents.unsqueeze(2)
 
-        image_latents = rearrange(
-            image_latents.reshape(b, 2, num_frames, c, h, w),
-            'b m t c h w -> (b m) c t h w'
+        b, num_segments = shape
+        expected_segments = b * num_segments
+        if image_latents.shape[0] != expected_segments:
+            raise ValueError(
+                f"Unexpected VAE batch size: got {image_latents.shape[0]}, "
+                f"expected {expected_segments}"
+            )
+
+        c, latent_frames, h, w = image_latents.shape[1:]
+        latent_tokens_per_segment = (
+            latent_frames * config.dataset.preprocessing.num_visual_tokens_per_frame
         )
+        expected_segment_len = latent_tokens_per_segment + int(config.model.showo.add_time_embeds)
+        actual_segment_len = int(modality_positions[0, 0, 1].item())
+        if actual_segment_len != expected_segment_len:
+            raise ValueError(
+                "Token layout does not match clip-level VAE latent shape: "
+                f"modality length={actual_segment_len}, expected={expected_segment_len}, "
+                f"latent_frames={latent_frames}, h={h}, w={w}"
+            )
 
         t_list, xt_list, ut_list = [], [], []
         for i in range(image_latents.shape[0]):
@@ -566,15 +612,15 @@ def main():
                 pixel_values = micro_batch['images'].to(accelerator.device).to(weight_type)
 
                 b, m, num_frames_t = pixel_values.shape[:3]
-                pixel_values = rearrange(pixel_values, 'b m t c h w -> (b m t) c h w')
-                micro_data_type = micro_batch['data_type'] * (m * num_frames_t)
+                pixel_values = rearrange(pixel_values, 'b m t c h w -> (b m) c t h w')
+                micro_data_type = micro_batch['data_type'] * m
 
                 text_masks = micro_batch['text_masks'].to(accelerator.device)
                 image_masks = micro_batch['image_masks'].to(accelerator.device)
                 modality_positions = micro_batch['modality_positions'].to(accelerator.device)
 
                 image_latents, t, image_labels, recons_images, image_masks = prepare_latents_and_labels(
-                    pixel_values, micro_data_type, (b, m * num_frames_t),
+                    pixel_values, micro_data_type, (b, m),
                     image_masks, modality_positions, num_frames=num_frames_t,
                 )
 
@@ -726,14 +772,13 @@ def main():
                         if 'qa' in validation_records:
                             qa_record = validation_records['qa']
                             validate_qa_answers(
-                                model=model, text_tokenizer=text_tokenizer,
-                                vae_model=vae_model, config=config,
+                                model=model,
+                                text_tokenizer=text_tokenizer,
                                 global_step=global_step + 1,
-                                device=accelerator.device, weight_type=weight_type,
-                                sampler=sampler, showo_token_ids=showo_token_ids,
+                                device=accelerator.device,
+                                weight_type=weight_type,
                                 batch=qa_record['batch'],
                                 image_latents_qa=qa_record['image_latents_qa'],
-                                num_frames=qa_record['num_frames'],
                             )
                     except Exception as exc:
                         logger.exception("Validation generation failed.")
@@ -911,11 +956,10 @@ def generate_tactile_samples(
 
 @torch.no_grad()
 def validate_qa_answers(
-        model, text_tokenizer, vae_model, config, global_step,
-        device, weight_type, sampler, showo_token_ids,
-        batch, image_latents_qa, num_frames,
+        model, text_tokenizer, global_step,
+        device, weight_type, batch, image_latents_qa,
 ):
-    """Validate QA: log NTP accuracy and generate tactile from QA samples."""
+    """Validate QA answer-token accuracy without logging QA-conditioned videos."""
     if batch is None:
         return
     was_training = model.training
@@ -978,45 +1022,6 @@ def validate_qa_answers(
                     "QA/predicted_answer": wandb.Html(f"<pre>Pred: {pred_text[:500]}\nGT:   {gt_text[:500]}</pre>"),
                 }, step=global_step)
                 logger.info(f"QA accuracy: {qa_accuracy.item():.4f} | Pred: {pred_text[:100]}...")
-
-        # 2. Generate tactile video from the QA sample for visual inspection
-        model_for_sampling = model.module if hasattr(model, "module") else model
-        # Use original text (question text from batch) as prompt for generation
-        question_text = batch['texts'][0] if batch.get('texts') else "QA sample"
-        visual_cond_qa = image_latents[0:1]
-        z_tactile_qa = torch.randn_like(visual_cond_qa)
-        gen_latents = torch.cat([visual_cond_qa, z_tactile_qa], dim=0)
-
-        # Build tokens for this QA sample's question (simplified CFG-less path)
-        block_mask_gen = omni_attn_mask_naive(
-            text_tokens_qa[0:1].size(0), text_tokens_qa[0:1].size(1),
-            modality_positions[0:1], device,
-        ).to(weight_type)
-        gen_model_kwargs = dict(
-            text_tokens=text_tokens_qa[0:1],
-            attention_mask=block_mask_gen,
-            modality_positions=modality_positions[0:1],
-            output_hidden_states=True,
-            max_seq_len=text_tokens_qa.size(1),
-            guidance_scale=0.0,
-            only_denoise_last_image=True,
-        )
-        sample_fn = sampler.sample_ode(
-            sampling_method=config.transport.sampling_method,
-            num_steps=config.transport.num_inference_steps,
-            atol=config.transport.atol,
-            rtol=config.transport.rtol,
-            reverse=config.transport.reverse,
-            time_shifting_factor=config.transport.time_shifting_factor,
-        )
-        samples_qa = sample_fn(gen_latents, model_for_sampling.t2i_generate, **gen_model_kwargs)[-1]
-        gen_tac_frames = vae_model.batch_decode(samples_qa[-1:])
-        gen_tac_video = denorm_vid(gen_tac_frames)
-
-        wandb.log({
-            "QA/tactile_generated": wandb.Video(gen_tac_video, caption=f"QA gen: {question_text[:120]}", fps=2, format="mp4"),
-        }, step=global_step)
-        logger.info("Logged QA validation (accuracy + tactile generation).")
     except Exception as exc:
         logger.exception("QA validation failed.")
     finally:
