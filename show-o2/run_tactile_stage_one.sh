@@ -30,7 +30,7 @@ MODEL_ROOT=/defaultShare/models
 
 # 触觉数据路径 — 根据你的集群数据路径修改
 TACTILE_DATA_ROOT=/defaultShare/data_indoor
-TACTILE_CSV_PATH=/Show-o/show-o2/contact_indoor_list_tvl.csv
+TACTILE_CSV_PATH=contact_indoor_list_tvl.csv
 # ========== Idea 消融超参数 ==========
 # 设为 0 即关闭对应方法:
 #   VIRTUAL_FORCE_COEFF=0 CONTACT_WEIGHTED_FLOW_ALPHA=0 bash run_tactile_stage_one_ssa.sh

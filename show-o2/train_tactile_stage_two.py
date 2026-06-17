@@ -55,7 +55,8 @@ os.environ["TOKENIZERS_PARALLELISM"] = "true"
 if torch.cuda.is_available():
     flex_attention = torch.compile(flex_attention)
 
-from datasets import MixedDataLoader, TactileVisualDataset
+from datasets import MixedDataLoader, TactileVisualDataset, TactileQADataset
+from datasets.utils import format_sequence_tactile_gen
 from utils import get_config, flatten_omega_conf, AverageMeter, denorm_vid, _freeze_params, path_to_llm_name
 
 from transport import Sampler, create_transport
@@ -84,7 +85,15 @@ def main():
     )
 
     bs_tactile = config.training.batch_size_tactile
-    total_batch_size_per_gpu = bs_tactile * config.dataset.accumulation
+    bs_qa = OmegaConf.select(config.training, 'batch_size_tactile_qa', default=0)
+    use_tactile_qa = OmegaConf.select(config.training, 'use_tactile_qa', default=False)
+    # In concat mode each loader contributes independently; in sample-based modes
+    # accumulation controls how many batches are fetched per step.
+    # Only count QA batch when QA is actually enabled (use_tactile_qa=true).
+    if config.dataset.mixed_loader_mode == 'concat_max_size_cycle' and use_tactile_qa:
+        total_batch_size_per_gpu = bs_tactile + bs_qa
+    else:
+        total_batch_size_per_gpu = bs_tactile * config.dataset.accumulation
     total_batch_size_without_accum = total_batch_size_per_gpu * accelerator.num_processes
     total_batch_size = total_batch_size_without_accum * config.training.gradient_accumulation_steps
 
@@ -163,9 +172,47 @@ def main():
 
     # Load from Stage 1 checkpoint
     if config.model.showo.load_from_showo:
-        model = Showo2Qwen2_5.from_pretrained(
-            config.model.showo.pretrained_model_path, use_safetensors=False
-        ).to(accelerator.device)
+        allow_missing_force_head = OmegaConf.select(
+            config.model.showo, "allow_missing_tactile_force_head", default=False
+        )
+
+        def _extract_missing_keys(load_error):
+            message = str(load_error)
+            marker = "following keys are missing:"
+            if marker not in message:
+                return []
+            missing_section = message.split(marker, 1)[1].split("Please make sure", 1)[0]
+            return [
+                key.strip().strip(".")
+                for key in missing_section.replace("\n", " ").split(",")
+                if key.strip()
+            ]
+
+        try:
+            model = Showo2Qwen2_5.from_pretrained(
+                config.model.showo.pretrained_model_path,
+                use_safetensors=False,
+            ).to(accelerator.device)
+        except ValueError as exc:
+            missing_keys = _extract_missing_keys(exc)
+            only_missing_force_head = (
+                len(missing_keys) > 0
+                and all(key.startswith("tactile_force_head.") for key in missing_keys)
+            )
+            if allow_missing_force_head and only_missing_force_head:
+                logger.warning(
+                    "Stage 1 checkpoint is missing tactile_force_head weights. "
+                    "Randomly initializing tactile_force_head because "
+                    "model.showo.allow_missing_tactile_force_head=True. "
+                    f"Missing keys: {missing_keys}"
+                )
+                model = Showo2Qwen2_5.from_pretrained(
+                    config.model.showo.pretrained_model_path,
+                    use_safetensors=False,
+                    low_cpu_mem_usage=False,
+                ).to(accelerator.device)
+            else:
+                raise
     else:
         model = Showo2Qwen2_5(**config.model.showo).to(accelerator.device)
 
@@ -179,8 +226,18 @@ def main():
     dataset_config = config.dataset.params
 
     if config.model.showo.add_time_embeds:
-        config.dataset.preprocessing.num_visual_tokens += 1
-        config.dataset.preprocessing.num_tactile_tokens += 1
+        latent_visual_tokens = (
+            config.dataset.preprocessing.num_visual_tokens_per_frame
+            * config.dataset.params.num_frames
+        )
+        latent_tactile_tokens = (
+            config.dataset.preprocessing.num_tactile_tokens_per_frame
+            * config.dataset.params.num_frames
+        )
+        if config.dataset.preprocessing.num_visual_tokens == latent_visual_tokens:
+            config.dataset.preprocessing.num_visual_tokens += 1
+        if config.dataset.preprocessing.num_tactile_tokens == latent_tactile_tokens:
+            config.dataset.preprocessing.num_tactile_tokens += 1
 
     ##################################
     #   Optimizer and LR scheduler   #
@@ -269,6 +326,8 @@ def main():
         num_frames=dataset_config.num_frames,
         num_visual_tokens_per_frame=preproc_config.num_visual_tokens_per_frame,
         num_tactile_tokens_per_frame=preproc_config.num_tactile_tokens_per_frame,
+        num_visual_tokens=preproc_config.num_visual_tokens,
+        num_tactile_tokens=preproc_config.num_tactile_tokens,
         cond_dropout_prob=config.training.cond_dropout_prob,
         split="train",
         showo_token_ids=showo_token_ids,
@@ -277,6 +336,36 @@ def main():
     train_dataloader_tactile = create_dataloader(
         dataset, config.training.batch_size_tactile, dataset.collate_fn
     )
+
+    # Optional QA dataset for NTP supervision (gated by use_tactile_qa, computed above)
+    qa_csv_path = OmegaConf.select(config.dataset.params, 'tactile_qa_csv_path', default=None)
+    bs_qa = OmegaConf.select(config.training, 'batch_size_tactile_qa', default=0)
+    if use_tactile_qa and qa_csv_path and bs_qa > 0:
+        logger.info(f"Creating TactileQADataset from {qa_csv_path}")
+        qa_dataset = TactileQADataset(
+            data_root=dataset_config.tactile_data_root,
+            csv_path=dataset_config.tactile_csv_path,
+            tactile_qa_csv_path=qa_csv_path,
+            text_tokenizer=text_tokenizer,
+            max_seq_len=preproc_config.max_seq_length,
+            image_size=preproc_config.resolution,
+            latent_height=preproc_config.latent_height,
+            latent_width=preproc_config.latent_width,
+            num_frames=dataset_config.num_frames,
+            num_visual_tokens_per_frame=preproc_config.num_visual_tokens_per_frame,
+            num_tactile_tokens_per_frame=preproc_config.num_tactile_tokens_per_frame,
+            num_visual_tokens=preproc_config.num_visual_tokens,
+            num_tactile_tokens=preproc_config.num_tactile_tokens,
+            cond_dropout_prob=0.0,
+            split="train",
+            showo_token_ids=showo_token_ids,
+            min_res=preproc_config.min_res,
+        )
+        train_dataloader_qa = create_dataloader(
+            qa_dataset, bs_qa, qa_dataset.collate_fn
+        )
+    else:
+        train_dataloader_qa = None
 
     num_update_steps_per_epoch = len(train_dataloader_tactile)
     num_train_epochs = math.ceil(config.training.max_train_steps / num_update_steps_per_epoch)
@@ -312,18 +401,40 @@ def main():
             model.load_state_dict(state_dict, strict=False if config.model.showo.params_not_load is not None else True)
             del state_dict
 
+    loader_list = [train_dataloader_tactile]
+    if train_dataloader_qa is not None:
+        loader_list.append(train_dataloader_qa)
+
+    # Normalize samp_probs for sample-based modes (concat mode doesn't use them).
+    n_loaders = len(loader_list)
+    raw_probs = [1.0] * n_loaders
+    if config.dataset.mixed_loader_mode != 'concat_max_size_cycle':
+        total = sum(raw_probs)
+        raw_probs = [p / total for p in raw_probs]
+
     mixed_loader = MixedDataLoader(
-        loader_list=[train_dataloader_tactile],
-        samp_probs=[1.0],
+        loader_list=loader_list,
+        samp_probs=raw_probs,
         accumulation=config.dataset.accumulation,
-        mode="max_size_cycle"
+        mode=config.dataset.mixed_loader_mode
     )
+
+    remaining_train_steps = config.training.max_train_steps - global_step
+    warmup_steps = config.lr_scheduler.params.warmup_steps
+    if warmup_steps is None:
+        warmup_ratio = float(OmegaConf.select(config.lr_scheduler.params, "warmup_ratio", default=0.0) or 0.0)
+        warmup_steps = int(remaining_train_steps * warmup_ratio)
+        config.lr_scheduler.params.warmup_steps = warmup_steps
+        logger.info(
+            f"Computed lr warmup_steps={warmup_steps} from warmup_ratio={warmup_ratio} "
+            f"and remaining_train_steps={remaining_train_steps}"
+        )
 
     lr_scheduler = get_scheduler(
         config.lr_scheduler.scheduler,
         optimizer=optimizer,
-        num_training_steps=config.training.max_train_steps - global_step,
-        num_warmup_steps=config.lr_scheduler.params.warmup_steps,
+        num_training_steps=remaining_train_steps,
+        num_warmup_steps=warmup_steps,
     )
 
     ##################################
@@ -373,89 +484,168 @@ def main():
         c, h, w = image_latents.shape[1:]
         b, n = shape
 
+        image_latents = rearrange(
+            image_latents.reshape(b, 2, num_frames, c, h, w),
+            'b m t c h w -> (b m) c t h w'
+        )
+
         t_list, xt_list, ut_list = [], [], []
-        for i, tp in enumerate(data_type):
-            t_i, x0, x1 = transport.sample(image_latents[i][None])
-            t_i, xt_i, ut_i = transport.path_sampler.plan(t_i, x0, x1)
+        for i in range(image_latents.shape[0]):
+            t_i, x0_i, x1_i = transport.sample(image_latents[i][None])
+            t_i, xt_i, ut_i = transport.path_sampler.plan(t_i, x0_i, x1_i)
             t_list.append(t_i)
             xt_list.append(xt_i)
             ut_list.append(ut_i)
 
-        t = torch.stack(t_list, dim=0).squeeze(-1)
+        t = torch.cat(t_list, dim=0)
         xt = torch.cat(xt_list, dim=0)
         ut = torch.cat(ut_list, dim=0)
 
-        image_latents_orig = image_latents.reshape(b, n, c, h, w).clone()
-        xt = xt.reshape(b, n, c, h, w)
-        ut = ut.reshape(b, n, c, h, w)
-        t = t.reshape(b, n)
-
         for i in range(b):
-            xt[i, :num_frames] = image_latents_orig[i, :num_frames].clone()
-            t[i, :num_frames] = 1.0
+            visual_idx = i * 2
+            xt[visual_idx] = image_latents[visual_idx].clone()
+            t[visual_idx] = 1.0
             vis_sid, vis_len = modality_positions[i, 0]
             image_masks[i, vis_sid: vis_sid + vis_len] = 0
 
-        xt = rearrange(xt.reshape(b, 2, num_frames, c, h, w), 'b m t c h w -> (b m) c t h w')
-        ut = rearrange(ut.reshape(b, 2, num_frames, c, h, w), 'b m t c h w -> (b m) c t h w')
-        image_latents = rearrange(image_latents_orig.reshape(b, 2, num_frames, c, h, w),
-                                  'b m t c h w -> (b m) c t h w')
-        t = t.reshape(b, 2, num_frames).reshape(b * 2, num_frames)
-        t = t.mean(dim=-1)  # (B*2, num_frames) → (B*2,), one scalar per video segment
-
-        return image_latents, t, ut, recons_images, image_masks
+        return xt, t, ut, recons_images, image_masks
 
     batch_time_m = AverageMeter()
     data_time_m = AverageMeter()
     end = time.time()
+
+    def slice_batch_by_indices(batch, indices):
+        batch_size = len(batch.get('data_type', []))
+        if batch_size == 0 and torch.is_tensor(batch.get('text_tokens')):
+            batch_size = batch['text_tokens'].shape[0]
+
+        sliced = {}
+        for key, value in batch.items():
+            if torch.is_tensor(value):
+                if value.dim() > 0 and value.shape[0] == batch_size:
+                    sliced[key] = value[indices]
+                else:
+                    sliced[key] = value
+            elif isinstance(value, list) and len(value) == batch_size:
+                sliced[key] = [value[i] for i in indices]
+            else:
+                sliced[key] = value
+        return sliced
 
     for epoch in range(first_epoch, num_train_epochs):
         model.train()
         for batch in mixed_loader:
             data_time_m.update(time.time() - end)
 
-            text_tokens = batch['text_tokens'].to(accelerator.device)
-            text_labels = batch['text_labels'].to(accelerator.device)
-            pixel_values = batch['images'].to(accelerator.device).to(weight_type)
+            batch_data_types = batch.get('data_type', [])
+            pure_gen_idx = [i for i, dt in enumerate(batch_data_types) if dt != 'tactile_qa_data']
+            qa_idx = [i for i, dt in enumerate(batch_data_types) if dt == 'tactile_qa_data']
+            micro_specs = []
+            if pure_gen_idx:
+                micro_specs.append(('pure_gen', pure_gen_idx))
+            if qa_idx:
+                micro_specs.append(('qa', qa_idx))
+            if not micro_specs:
+                micro_specs.append(('all', list(range(batch['text_tokens'].shape[0]))))
 
-            b, m, num_frames_t = pixel_values.shape[:3]
-            pixel_values = rearrange(pixel_values, 'b m t c h w -> (b m t) c h w')
-            batch['data_type'] = batch['data_type'] * (m * num_frames_t)
-
-            text_masks = batch['text_masks'].to(accelerator.device)
-            image_masks = batch['image_masks'].to(accelerator.device)
-            modality_positions = batch['modality_positions'].to(accelerator.device)
-
-            image_latents, t, image_labels, recons_images, image_masks = prepare_latents_and_labels(
-                pixel_values, batch['data_type'], (b, m * num_frames_t),
-                image_masks, modality_positions, num_frames=num_frames_t,
+            # Split objectives into micro-steps to lower peak memory: pure-gen trains flow, QA trains NTP.
+            step_loss_ntp = torch.zeros((), device=accelerator.device)
+            step_loss_flow = torch.zeros((), device=accelerator.device)
+            need_validation = (
+                accelerator.sync_gradients
+                and accelerator.is_main_process
+                and (global_step + 1) % config.experiment.generate_every == 0
             )
+            validation_records = {}
 
-            block_mask = omni_attn_mask_naive(
-                text_tokens.size(0), text_tokens.size(1),
-                modality_positions, accelerator.device
-            ).to(weight_type)
+            for micro_name, micro_indices in micro_specs:
+                micro_batch = slice_batch_by_indices(batch, micro_indices)
 
-            logits, loss_ntp, loss_flow = model(
-                text_tokens=text_tokens,
-                image_latents=image_latents,
-                t=t.to(weight_type),
-                attention_mask=block_mask,
-                text_masks=text_masks,
-                image_masks=image_masks,
-                text_labels=text_labels,
-                image_labels=image_labels,
-                modality_positions=modality_positions,
-                output_hidden_states=True,
-                max_seq_len=text_tokens.size(1),
-                device=accelerator.device,
-            )
+                text_tokens = micro_batch['text_tokens'].to(accelerator.device)
+                text_labels = micro_batch['text_labels'].to(accelerator.device)
+                pixel_values = micro_batch['images'].to(accelerator.device).to(weight_type)
 
-            avg_loss_ntp = accelerator.gather(loss_ntp.repeat(total_batch_size_per_gpu)).mean()
-            avg_loss_flow = accelerator.gather(loss_flow.repeat(total_batch_size_per_gpu)).mean()
-            loss = config.training.ntp_coeff * loss_ntp + config.training.flow_coeff * loss_flow
+                b, m, num_frames_t = pixel_values.shape[:3]
+                pixel_values = rearrange(pixel_values, 'b m t c h w -> (b m t) c h w')
+                micro_data_type = micro_batch['data_type'] * (m * num_frames_t)
 
-            accelerator.backward(loss.to(weight_type) / config.training.gradient_accumulation_steps)
+                text_masks = micro_batch['text_masks'].to(accelerator.device)
+                image_masks = micro_batch['image_masks'].to(accelerator.device)
+                modality_positions = micro_batch['modality_positions'].to(accelerator.device)
+
+                image_latents, t, image_labels, recons_images, image_masks = prepare_latents_and_labels(
+                    pixel_values, micro_data_type, (b, m * num_frames_t),
+                    image_masks, modality_positions, num_frames=num_frames_t,
+                )
+
+                block_mask = omni_attn_mask_naive(
+                    text_tokens.size(0), text_tokens.size(1),
+                    modality_positions, accelerator.device
+                ).to(weight_type)
+
+                is_qa_micro = micro_name == 'qa'
+                model_text_labels = text_labels if is_qa_micro else None
+                model_image_labels = None if is_qa_micro else image_labels
+
+                model_outputs = model(
+                    text_tokens=text_tokens,
+                    image_latents=image_latents,
+                    t=t.to(weight_type),
+                    attention_mask=block_mask,
+                    text_masks=text_masks,
+                    image_masks=image_masks,
+                    text_labels=model_text_labels,
+                    image_labels=model_image_labels,
+                    modality_positions=modality_positions,
+                    output_hidden_states=True,
+                    max_seq_len=text_tokens.size(1),
+                    device=accelerator.device,
+                )
+
+                if is_qa_micro:
+                    logits, loss_ntp = model_outputs
+                    loss_flow = torch.zeros((), device=loss_ntp.device, dtype=loss_ntp.dtype)
+                    micro_loss = config.training.ntp_coeff * loss_ntp
+                else:
+                    logits, loss_flow = model_outputs
+                    loss_ntp = torch.zeros((), device=loss_flow.device, dtype=loss_flow.dtype)
+                    micro_loss = config.training.flow_coeff * loss_flow
+
+                accelerator.backward(micro_loss.to(weight_type) / config.training.gradient_accumulation_steps)
+
+                step_loss_flow = step_loss_flow + loss_flow.detach()
+                step_loss_ntp = step_loss_ntp + loss_ntp.detach()
+
+                if need_validation and micro_name == 'pure_gen' and 'pure_gen' not in validation_records:
+                    validation_records['pure_gen'] = {
+                        'visual_latents': image_latents[0:1].detach(),
+                        'target_pixel_values': pixel_values.detach(),
+                        'captions': [micro_batch['texts'][0]] if micro_batch.get('texts') else ["pure gen"],
+                        'num_frames': num_frames_t,
+                    }
+                if need_validation and micro_name == 'qa' and 'qa' not in validation_records:
+                    validation_records['qa'] = {
+                        'batch': {
+                            'text_tokens': text_tokens[0:1].detach(),
+                            'text_labels': text_labels[0:1].detach(),
+                            'text_masks': text_masks[0:1].detach(),
+                            'image_masks': image_masks[0:1].detach(),
+                            'modality_positions': modality_positions[0:1].detach(),
+                            'texts': [micro_batch['texts'][0]] if micro_batch.get('texts') else ["qa"],
+                        },
+                        'image_latents_qa': image_latents[0:2].detach(),
+                        'num_frames': num_frames_t,
+                    }
+
+                del (
+                    micro_batch, text_tokens, text_labels, pixel_values, text_masks,
+                    image_masks, modality_positions, image_latents, t, image_labels,
+                    recons_images, block_mask, logits, loss_ntp, loss_flow, micro_loss,
+                    model_outputs, model_text_labels, model_image_labels
+                )
+
+            avg_loss_ntp = accelerator.gather(step_loss_ntp.repeat(total_batch_size_per_gpu)).mean()
+            avg_loss_flow = accelerator.gather(step_loss_flow.repeat(total_batch_size_per_gpu)).mean()
 
             if config.training.max_grad_norm is not None and accelerator.sync_gradients:
                 accelerator.clip_grad_norm_(model.parameters(), config.training.max_grad_norm)
@@ -516,6 +706,38 @@ def main():
                 if (global_step + 1) % config.experiment.save_every == 0:
                     save_checkpoint(model, config, accelerator, global_step + 1)
 
+                # Generate validation images and QA results
+                if (global_step + 1) % config.experiment.generate_every == 0 and accelerator.is_main_process:
+                    try:
+                        if 'pure_gen' in validation_records:
+                            pure_record = validation_records['pure_gen']
+                            generate_tactile_samples(
+                                model=model, vae_model=vae_model,
+                                text_tokenizer=text_tokenizer, config=config,
+                                global_step=global_step + 1,
+                                device=accelerator.device, weight_type=weight_type,
+                                sampler=sampler, showo_token_ids=showo_token_ids,
+                                visual_latents=pure_record['visual_latents'],
+                                target_pixel_values=pure_record['target_pixel_values'],
+                                captions=pure_record['captions'],
+                                num_frames=pure_record['num_frames'],
+                            )
+
+                        if 'qa' in validation_records:
+                            qa_record = validation_records['qa']
+                            validate_qa_answers(
+                                model=model, text_tokenizer=text_tokenizer,
+                                vae_model=vae_model, config=config,
+                                global_step=global_step + 1,
+                                device=accelerator.device, weight_type=weight_type,
+                                sampler=sampler, showo_token_ids=showo_token_ids,
+                                batch=qa_record['batch'],
+                                image_latents_qa=qa_record['image_latents_qa'],
+                                num_frames=qa_record['num_frames'],
+                            )
+                    except Exception as exc:
+                        logger.exception("Validation generation failed.")
+
                 global_step += 1
 
             if global_step >= config.training.max_train_steps:
@@ -556,6 +778,249 @@ def save_checkpoint(model, config, accelerator, global_step):
         )
         json.dump({"global_step": global_step}, (save_path / "metadata.json").open("w+"))
         logger.info(f"Saved state to {save_path}")
+
+
+def prepare_tactile_generation_batch(
+        prompts, text_tokenizer, showo_token_ids, config, device,
+):
+    """Build token batches for tactile generation sampling (CFG-compatible)."""
+    preproc_config = config.dataset.preprocessing
+    num_visual_tokens = preproc_config.num_visual_tokens
+    num_tactile_tokens = preproc_config.num_tactile_tokens
+    max_text_len = preproc_config.max_seq_length - num_visual_tokens - num_tactile_tokens - 6
+    if max_text_len <= 0:
+        raise ValueError("max_seq_len too short for video tokens")
+
+    batch_text_tokens, batch_text_tokens_null = [], []
+    batch_modality_positions, batch_modality_positions_null = [], []
+
+    for prompt in prompts:
+        text_ids = text_tokenizer(prompt, add_special_tokens=False, truncation=True, max_length=max_text_len).input_ids
+        null_ids = text_tokenizer("", add_special_tokens=False, truncation=True, max_length=max_text_len).input_ids
+
+        for ids, bucket_tokens, bucket_positions in [
+            (text_ids, batch_text_tokens, batch_modality_positions),
+            (null_ids, batch_text_tokens_null, batch_modality_positions_null),
+        ]:
+            tokens, _, positions, _, _ = format_sequence_tactile_gen(
+                text_tokens=ids,
+                bos_id=showo_token_ids["bos_id"],
+                eos_id=showo_token_ids["eos_id"],
+                bov_id=showo_token_ids["bov_id"],
+                eov_id=showo_token_ids["eov_id"],
+                pad_id=text_tokenizer.pad_token_id,
+                vid_pad_id=showo_token_ids["vid_pad_id"],
+                num_visual_tokens=num_visual_tokens,
+                num_tactile_tokens=num_tactile_tokens,
+                max_seq_len=preproc_config.max_seq_length,
+            )
+            bucket_tokens.append(tokens)
+            bucket_positions.append(positions)
+
+    return (
+        torch.stack(batch_text_tokens, dim=0).to(device),
+        torch.stack(batch_text_tokens_null, dim=0).to(device),
+        torch.stack(batch_modality_positions, dim=0).to(device),
+        torch.stack(batch_modality_positions_null, dim=0).to(device),
+    )
+
+
+@torch.no_grad()
+def generate_tactile_samples(
+        model, vae_model, text_tokenizer, config, global_step,
+        device, weight_type, sampler, showo_token_ids,
+        visual_latents, target_pixel_values, captions, num_frames,
+):
+    """Generate tactile video from the current pure-gen batch and log to wandb."""
+    logger.info("Generating tactile validation samples...")
+    was_training = model.training
+    try:
+        model.eval()
+        model_for_sampling = model.module if hasattr(model, "module") else model
+
+        prompt = captions[0]
+        batch_text_tokens, batch_text_tokens_null, batch_modality_positions, batch_modality_positions_null = \
+            prepare_tactile_generation_batch([prompt], text_tokenizer, showo_token_ids, config, device)
+
+        visual_cond = visual_latents[0:1].to(device=device, dtype=weight_type)
+        z_tactile = torch.randn_like(visual_cond)
+        image_latents = torch.cat([visual_cond, z_tactile], dim=0)
+
+        guidance_scale = config.transport.guidance_scale
+        if guidance_scale > 0:
+            initial_latents = torch.cat([image_latents, image_latents], dim=0)
+            text_tokens_cfg = torch.cat([batch_text_tokens, batch_text_tokens_null], dim=0)
+            modality_positions_cfg = torch.cat([batch_modality_positions, batch_modality_positions_null], dim=0)
+        else:
+            initial_latents = image_latents
+            text_tokens_cfg = batch_text_tokens
+            modality_positions_cfg = batch_modality_positions
+
+        block_mask = omni_attn_mask_naive(
+            text_tokens_cfg.size(0), text_tokens_cfg.size(1),
+            modality_positions_cfg, device,
+        ).to(weight_type)
+
+        model_kwargs = dict(
+            text_tokens=text_tokens_cfg,
+            attention_mask=block_mask,
+            modality_positions=modality_positions_cfg,
+            output_hidden_states=True,
+            max_seq_len=text_tokens_cfg.size(1),
+            guidance_scale=guidance_scale,
+            only_denoise_last_image=True,
+        )
+
+        sample_fn = sampler.sample_ode(
+            sampling_method=config.transport.sampling_method,
+            num_steps=config.transport.num_inference_steps,
+            atol=config.transport.atol,
+            rtol=config.transport.rtol,
+            reverse=config.transport.reverse,
+            time_shifting_factor=config.transport.time_shifting_factor,
+        )
+        samples = sample_fn(initial_latents, model_for_sampling.t2i_generate, **model_kwargs)[-1]
+        if guidance_scale > 0:
+            samples = torch.chunk(samples, 2)[0]
+        generated_tactile_latents = samples[-1:]
+
+        generated_frames = vae_model.batch_decode(generated_tactile_latents)
+        generated_video = denorm_vid(generated_frames)
+
+        if target_pixel_values.dim() == 5:
+            batch_size = target_pixel_values.shape[0] // 2
+            target_pixel_values = target_pixel_values.reshape(batch_size, 2, *target_pixel_values.shape[1:])
+            visual_video = denorm_vid(target_pixel_values[0, 0].unsqueeze(0))
+            target_video = denorm_vid(target_pixel_values[0, 1].unsqueeze(0))
+        else:
+            total = target_pixel_values.shape[0]
+            batch_size = total // (2 * num_frames)
+            target_pixel_values = target_pixel_values.reshape(batch_size, 2, num_frames, *target_pixel_values.shape[1:])
+            visual_video = denorm_vid(target_pixel_values[0, 0].unsqueeze(0).permute(0, 2, 1, 3, 4))
+            target_video = denorm_vid(target_pixel_values[0, 1].unsqueeze(0).permute(0, 2, 1, 3, 4))
+
+        wandb.log({
+            "Tactile Generation/visual_condition": wandb.Video(visual_video, caption=f"Visual: {prompt[:120]}", fps=2, format="mp4"),
+            "Tactile Generation/tactile_target": wandb.Video(target_video, caption=f"Target: {prompt[:120]}", fps=2, format="mp4"),
+            "Tactile Generation/tactile_generated": wandb.Video(generated_video, caption=f"Generated: {prompt[:120]}", fps=2, format="mp4"),
+        }, step=global_step)
+        logger.info("Logged tactile generation validation videos.")
+    finally:
+        model.train(was_training)
+
+
+@torch.no_grad()
+def validate_qa_answers(
+        model, text_tokenizer, vae_model, config, global_step,
+        device, weight_type, sampler, showo_token_ids,
+        batch, image_latents_qa, num_frames,
+):
+    """Validate QA: log NTP accuracy and generate tactile from QA samples."""
+    if batch is None:
+        return
+    was_training = model.training
+    try:
+        model.eval()
+
+        # 1. NTP accuracy on answer tokens
+        text_labels = batch['text_labels'].to(device)
+        text_tokens_qa = batch['text_tokens'].to(device)
+        modality_positions = batch['modality_positions'].to(device)
+        image_masks = batch['image_masks'].to(device)
+        image_latents = image_latents_qa.to(device=device, dtype=weight_type)
+
+        text_masks = batch['text_masks'].to(device)
+        block_mask = omni_attn_mask_naive(
+            text_tokens_qa.size(0), text_tokens_qa.size(1),
+            modality_positions, device,
+        ).to(weight_type)
+
+        logits, _ = model(
+            text_tokens=text_tokens_qa,
+            image_latents=image_latents,
+            t=torch.ones(image_latents.shape[0], device=device).to(weight_type),
+            attention_mask=block_mask,
+            text_masks=text_masks,
+            image_masks=image_masks,
+            text_labels=text_labels,
+            image_labels=None,
+            modality_positions=modality_positions,
+            output_hidden_states=True,
+            max_seq_len=text_tokens_qa.size(1),
+            device=device,
+        )
+
+        # Compute per-token accuracy on answer positions (labels != -100)
+        valid_mask = text_labels[:, 1:] != -100
+        if valid_mask.any():
+            valid_labels = text_labels[:, 1:][valid_mask]
+            if logits is not None and logits.dim() == 2:
+                pred_ids_all = logits.argmax(dim=-1)
+                correct = pred_ids_all == valid_labels
+                qa_accuracy = correct.sum().float() / valid_labels.numel()
+                pred_ids = pred_ids_all.tolist()
+                gt_ids = valid_labels.tolist()
+            else:
+                preds = logits[:, :-1].argmax(dim=-1)
+                correct = (preds == text_labels[:, 1:]) & valid_mask
+                qa_accuracy = correct.sum().float() / valid_mask.sum().float()
+                first_valid = valid_mask[0].nonzero(as_tuple=True)[0]
+                pred_ids = preds[0][first_valid].tolist()
+                gt_ids = text_labels[0, 1:][first_valid].tolist()
+
+            # Decode a sample answer
+            if len(gt_ids) > 0:
+                pred_text = text_tokenizer.decode([t for t in pred_ids if t >= 0], skip_special_tokens=True)
+                gt_text = text_tokenizer.decode([t for t in gt_ids if t >= 0], skip_special_tokens=True)
+
+                wandb.log({
+                    "QA/accuracy": qa_accuracy.item(),
+                    "QA/predicted_answer": wandb.Html(f"<pre>Pred: {pred_text[:500]}\nGT:   {gt_text[:500]}</pre>"),
+                }, step=global_step)
+                logger.info(f"QA accuracy: {qa_accuracy.item():.4f} | Pred: {pred_text[:100]}...")
+
+        # 2. Generate tactile video from the QA sample for visual inspection
+        model_for_sampling = model.module if hasattr(model, "module") else model
+        # Use original text (question text from batch) as prompt for generation
+        question_text = batch['texts'][0] if batch.get('texts') else "QA sample"
+        visual_cond_qa = image_latents[0:1]
+        z_tactile_qa = torch.randn_like(visual_cond_qa)
+        gen_latents = torch.cat([visual_cond_qa, z_tactile_qa], dim=0)
+
+        # Build tokens for this QA sample's question (simplified CFG-less path)
+        block_mask_gen = omni_attn_mask_naive(
+            text_tokens_qa[0:1].size(0), text_tokens_qa[0:1].size(1),
+            modality_positions[0:1], device,
+        ).to(weight_type)
+        gen_model_kwargs = dict(
+            text_tokens=text_tokens_qa[0:1],
+            attention_mask=block_mask_gen,
+            modality_positions=modality_positions[0:1],
+            output_hidden_states=True,
+            max_seq_len=text_tokens_qa.size(1),
+            guidance_scale=0.0,
+            only_denoise_last_image=True,
+        )
+        sample_fn = sampler.sample_ode(
+            sampling_method=config.transport.sampling_method,
+            num_steps=config.transport.num_inference_steps,
+            atol=config.transport.atol,
+            rtol=config.transport.rtol,
+            reverse=config.transport.reverse,
+            time_shifting_factor=config.transport.time_shifting_factor,
+        )
+        samples_qa = sample_fn(gen_latents, model_for_sampling.t2i_generate, **gen_model_kwargs)[-1]
+        gen_tac_frames = vae_model.batch_decode(samples_qa[-1:])
+        gen_tac_video = denorm_vid(gen_tac_frames)
+
+        wandb.log({
+            "QA/tactile_generated": wandb.Video(gen_tac_video, caption=f"QA gen: {question_text[:120]}", fps=2, format="mp4"),
+        }, step=global_step)
+        logger.info("Logged QA validation (accuracy + tactile generation).")
+    except Exception as exc:
+        logger.exception("QA validation failed.")
+    finally:
+        model.train(was_training)
 
 
 def log_grad_norm(model, accelerator, global_step):

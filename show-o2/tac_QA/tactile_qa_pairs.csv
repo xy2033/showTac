@@ -1,0 +1,971 @@
+object_name,question,answer,qa_type
+spoon,What material is used and how hard does it feel?,The object is made of metal and feels very hard.,material_hardness
+bowl,What material is the object made of?,The object is made of ceramic.,material_identity
+pencilbox2,"Based on the tactile feedback, does this plastic object feel smooth?","Yes, the plastic object feels smooth.",roughness_material
+cd,What material is the object made of?,The object is made of plastic.,material_identity
+shampool_1,"Based on the tactile feedback, does this plastic object feel smooth?","Yes, the plastic object feels smooth.",roughness_material
+paper,What are the roughness and hardness of this object?,The surface is smooth and the object feels soft.,roughness_hardness
+rubber_rabbittoy_hard_smooth_1,Is this object made of ceramic or rubber?,This object is made of rubber.,material_discrimination
+galssbottel_net_pattern_hard_smooth_1,Does this metal object feel hard when pressed?,"Yes, the metal object feels very hard.",hardness_material
+sponge_brush_s_sponge_soft_rough,Does this rubber object feel hard when pressed?,"No, the rubber object feels soft.",hardness_material
+plastic_bottle2,Is this object made of plastic or ceramic?,This object is made of plastic.,material_discrimination
+hotdog,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+plastic_box,What are the roughness and hardness of this object?,The surface is smooth and the object feels very hard.,roughness_hardness
+3dprint2,Does this foam object feel hard when pressed?,"The foam object has medium hardness, neither very hard nor soft.",hardness_material
+onion2,What texture can be observed on the surface?,"The surface has a glossy, smooth texture.",texture_tag
+plastic_box_bottom_hard_smooth_1,Is this object made of plastic or metal?,This object is made of plastic.,material_discrimination
+onion2,What material is the object made of?,The object is made of metal.,material_identity
+bowl,What are the roughness and hardness of this object?,The surface is smooth and the object feels very hard.,roughness_hardness
+woodcup,Is this object made of ceramic or wood?,This object is made of wood.,material_discrimination
+onion,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+vacuum_cup_lid,Does this metal object feel hard when pressed?,"Yes, the metal object feels very hard.",hardness_material
+galssbottel_net_pattern_hard_smooth_2,What material is the object made of?,The object is made of glass.,material_identity
+3dprint2,Is this object made of foam or ceramic?,This object is made of foam.,material_discrimination
+plastic_yellow_duck_wing,What material is used and how hard does it feel?,The object is made of plastic and feels soft.,material_hardness
+plastic_cup2,Is this object made of rubber or plastic?,This object is made of plastic.,material_discrimination
+shuttlecock2,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+paper_box_medium_smooth_2,Is this object made of paper or metal?,This object is made of paper.,material_discrimination
+woodcup,What material is used and how hard does it feel?,The object is made of wood and feels very hard.,material_hardness
+3dprint,"Based on the tactile feedback, does this rubber object feel smooth?","No, the rubber object feels slightly rough.",roughness_material
+woodcup,What object is being touched?,The object being touched is a Wood cup.,object_identity
+glove2,What object is being touched?,The object being touched is a Glove2.,object_identity
+plastic_bottle2,What object is being touched?,The object being touched is a plastic bottle.,object_identity
+coffeecup_plastic_smooth_hard_bottom_1,What object is being touched?,The object being touched is a Coffeecup.,object_identity
+coffeecup_plastic_smooth_hard_bottom_edge,Is this object made of paper or plastic?,This object is made of paper.,material_discrimination
+plastic_cup3,What texture can be observed on the surface?,"The surface has a glossy, smooth texture.",texture_tag
+grape,Does this rubber object feel hard when pressed?,"No, the rubber object feels soft.",hardness_material
+shampool_1,Is this object made of rubber or plastic?,This object is made of plastic.,material_discrimination
+cap,What are the roughness and hardness of this object?,The surface is smooth and the object feels soft.,roughness_hardness
+woodcup3,What texture can be observed on the surface?,"The surface has a polished, smooth texture.",texture_tag
+mouse_for_computer_scroll,What material is used and how hard does it feel?,The object is made of plastic and feels soft.,material_hardness
+woodcup2,What material is used and how hard does it feel?,The object is made of wood and feels hard.,material_hardness
+banana,Is this object made of metal or rubber?,This object is made of rubber.,material_discrimination
+can_metal_hard_smooth_bottom,What are the roughness and hardness of this object?,The surface is smooth and the object feels very hard.,roughness_hardness
+paperbox2,Is the surface of this object smooth or rough?,The surface is slightly rough.,roughness_binary
+metalbox2,Does this metal object feel hard when pressed?,"Yes, the metal object feels very hard.",hardness_material
+plastic_yellow_duck_beak,Does this plastic object feel hard when pressed?,"No, the plastic object feels soft.",hardness_material
+bowl_metal_plastic_edge,What material is the object made of?,The object is made of metal.,material_identity
+woodcup3,What object is being touched?,The object being touched is a Wooden cup.,object_identity
+glass_jar,Does this glass object feel hard when pressed?,"Yes, the glass object feels very hard.",hardness_material
+plastic_box_bottom_hard_smooth_edge,Is this object made of glass or plastic?,This object is made of plastic.,material_discrimination
+rubber_rabbittoy_hard_smooth_1,What material is used and how hard does it feel?,The object is made of rubber and feels hard.,material_hardness
+plastic_box_bottom_hard_smooth_edge,Does this plastic object feel hard when pressed?,"Yes, the plastic object feels very hard.",hardness_material
+orange2,What object is being touched?,The object being touched is a Lime.,object_identity
+rubber_soft_ball_rough,Does this rubber object feel hard when pressed?,"No, the rubber object feels soft.",hardness_material
+tomato_medium_smooth_1,What material is used and how hard does it feel?,The object is made of plastic and feels soft.,material_hardness
+plastic_box_bottom_hard_smooth,Is this object made of ceramic or plastic?,This object is made of plastic.,material_discrimination
+tomato_medium_smooth_1,"Based on the tactile feedback, does this plastic object feel smooth?","Yes, the plastic object feels smooth.",roughness_material
+plastic_bottle2,Is this object hard or soft?,The object is very hard.,hardness_binary
+plastic_box_bottom_hard_smooth_edge,What material is the object made of?,The object is made of plastic.,material_identity
+shampool_2,What object is being touched?,The object being touched is a Toothpaste bottle.,object_identity
+can_metal_hard_smooth_top,"Based on the tactile feedback, does this metal object feel smooth?","Yes, the metal object feels smooth.",roughness_material
+cap,Does this plastic object feel hard when pressed?,"No, the plastic object feels soft.",hardness_material
+rubber_toy3,What material is the object made of?,The object is made of rubber.,material_identity
+plastic_box_bottom_hard_smooth,"Based on the tactile feedback, does this plastic object feel smooth?","Yes, the plastic object feels smooth.",roughness_material
+plastic_bottle2,What material is the object made of?,The object is made of plastic.,material_identity
+glove,What are the roughness and hardness of this object?,The surface is slightly rough and the object feels soft.,roughness_hardness
+pill_bottle_hard_smooth_plastic_bottom_edge,Does this plastic object feel hard when pressed?,"Yes, the plastic object feels very hard.",hardness_material
+tomato_medium_smooth_1,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+coffeecup_plastic_smooth_hard_bottom_edge,"Based on the tactile feedback, does this paper object feel smooth?","Yes, the paper object feels smooth.",roughness_material
+shampool_1,What texture can be observed on the surface?,"The surface has a glossy, slick, smooth texture.",texture_tag
+plastic_bottle,What material is used and how hard does it feel?,The object is made of plastic and feels medium hardness.,material_hardness
+papercup,What material is used and how hard does it feel?,The object is made of paper and feels hard.,material_hardness
+metalbox2,What material is used and how hard does it feel?,The object is made of metal and feels very hard.,material_hardness
+hotdog,"Based on the tactile feedback, does this rubber object feel smooth?","Yes, the rubber object feels smooth.",roughness_material
+orange,Is this object hard or soft?,The object is hard.,hardness_binary
+paperbag2,Does this paper object feel hard when pressed?,"No, the paper object feels soft.",hardness_material
+rubber_toy,What texture can be observed on the surface?,The surface has a smooth texture.,texture_tag
+paper,What texture can be observed on the surface?,The surface has a smooth texture.,texture_tag
+shampool,What texture can be observed on the surface?,"The surface has a glossy, smooth texture.",texture_tag
+paperbox2,What are the roughness and hardness of this object?,The surface is slightly rough and the object feels soft.,roughness_hardness
+shampool_1,What object is being touched?,The object being touched is a Shampoo bottle.,object_identity
+plastic_yellow_duck_wing,Is the surface of this object smooth or rough?,The surface is rough.,roughness_binary
+plastic_bottle,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+shuttlecock2,What are the roughness and hardness of this object?,The surface is smooth and the object feels soft.,roughness_hardness
+rubber_toy3,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+glove2,Is this object hard or soft?,"The object has medium hardness, neither distinctly hard nor soft.",hardness_binary
+3dprint2,What are the roughness and hardness of this object?,The surface is slightly rough and the object feels medium hardness.,roughness_hardness
+pill_bottle_hard_smooth_plastic_bottom_edge,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+galssbottel_net_pattern_hard_smooth_3,What are the roughness and hardness of this object?,The surface is smooth and the object feels very hard.,roughness_hardness
+shampool_1,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+vacuum_cup,What texture can be observed on the surface?,"The surface has a glossy, smooth texture.",texture_tag
+paperbox2,Is this object hard or soft?,The object is soft.,hardness_binary
+paperbag2,Is this object hard or soft?,The object is soft.,hardness_binary
+mouse_for_computer_1,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+coffeecup_plastic_smooth_hard_bottom_1,Does this plastic object feel hard when pressed?,"The plastic object has medium hardness, neither very hard nor soft.",hardness_material
+tomato_leaf_soft_rough_2,"Based on the tactile feedback, does this rubber object feel smooth?","No, the rubber object feels slightly rough.",roughness_material
+pill_bottle_hard_smooth_plastic_cap,What material is the object made of?,The object is made of plastic.,material_identity
+vacuum_cup_lid,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+banana,"Based on the tactile feedback, does this rubber object feel smooth?","Yes, the rubber object feels smooth.",roughness_material
+bowl_metal_plastic_bottom,What are the roughness and hardness of this object?,The surface is smooth and the object feels hard.,roughness_hardness
+pencilbox,What object is being touched?,The object being touched is a Pencilbox.,object_identity
+grape,What object is being touched?,The object being touched is a grapes.,object_identity
+plastic_yellow_duck_wing,What object is being touched?,The object being touched is a Yellow duck toy.,object_identity
+peach_hard_rough,Is the surface of this object smooth or rough?,The surface is slightly rough.,roughness_binary
+plush_toy,What material is used and how hard does it feel?,The object is made of rubber and feels soft.,material_hardness
+can_metal_hard_smooth,Does this metal object feel hard when pressed?,"Yes, the metal object feels very hard.",hardness_material
+plastic_yellow_duck_wing,What material is the object made of?,The object is made of plastic.,material_identity
+wire,"Based on the tactile feedback, does this rubber object feel smooth?","Yes, the rubber object feels smooth.",roughness_material
+sponge_brush_handle,What material is used and how hard does it feel?,The object is made of plastic and feels very hard.,material_hardness
+bowl3,What are the roughness and hardness of this object?,The surface is smooth and the object feels hard.,roughness_hardness
+plastic_bottle2,What are the roughness and hardness of this object?,The surface is smooth and the object feels very hard.,roughness_hardness
+3dprint2,What material is the object made of?,The object is made of foam.,material_identity
+plush_toy,What object is being touched?,The object being touched is a teddy bear.,object_identity
+paperbag2,What material is the object made of?,The object is made of paper.,material_identity
+tomato_leaf_soft_rough_2,What material is used and how hard does it feel?,The object is made of rubber and feels soft.,material_hardness
+plastic_cup,Is this object made of plastic or glass?,This object is made of plastic.,material_discrimination
+plastic_box2,Is this object hard or soft?,The object is very hard.,hardness_binary
+coffeecup_plastic_smooth_hard_bottom,Is this object hard or soft?,The object is hard.,hardness_binary
+plastic_cup3,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+galssbottel_net_pattern_hard_smooth_2,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+galssbottel_net_pattern_hard_smooth_2,What texture can be observed on the surface?,"The surface has a textured, smooth texture.",texture_tag
+rubber_rabbittoy_hard_smooth_1,Is this object hard or soft?,The object is hard.,hardness_binary
+can_metal_hard_smooth,What material is used and how hard does it feel?,The object is made of metal and feels very hard.,material_hardness
+sponge_brush_s_sponge_soft_rough,What material is used and how hard does it feel?,The object is made of rubber and feels soft.,material_hardness
+plastic_yellow_duck_beak,What texture can be observed on the surface?,The surface has a smooth texture.,texture_tag
+tomato,Is this object hard or soft?,The object is soft.,hardness_binary
+shampool_2,Is this object hard or soft?,The object is very hard.,hardness_binary
+plastic_cup3,Is this object made of plastic or glass?,This object is made of plastic.,material_discrimination
+spoon,Is this object made of metal or plastic?,This object is made of metal.,material_discrimination
+shampool_2,What texture can be observed on the surface?,"The surface has a sleek, smooth texture.",texture_tag
+sponge2,What object is being touched?,The object being touched is a Sponge.,object_identity
+pencilbox,What material is used and how hard does it feel?,The object is made of plastic and feels very hard.,material_hardness
+plastic_yellow_duck_wing,Is this object made of plastic or rubber?,This object is made of plastic.,material_discrimination
+shampool_2,What are the roughness and hardness of this object?,The surface is smooth and the object feels very hard.,roughness_hardness
+galssbottel_net_pattern_hard_smooth,What material is the object made of?,The object is made of glass.,material_identity
+woodcup3,Is this object made of plastic or wood?,This object is made of wood.,material_discrimination
+bowl2,Is this object made of ceramic or glass?,This object is made of glass.,material_discrimination
+onion,What object is being touched?,The object being touched is a Onion.,object_identity
+vacuum_cup,What material is used and how hard does it feel?,The object is made of metal and feels very hard.,material_hardness
+paper,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+orange3,"Based on the tactile feedback, does this rubber object feel smooth?","No, the rubber object feels rough.",roughness_material
+iron_red_metal_box,What material is used and how hard does it feel?,The object is made of metal and feels very hard.,material_hardness
+coffeecup_plastic_smooth_hard_bottom,What material is used and how hard does it feel?,The object is made of plastic and feels hard.,material_hardness
+paperbox2,Does this paper object feel hard when pressed?,"No, the paper object feels soft.",hardness_material
+plastic_box,What texture can be observed on the surface?,"The surface has a polished, smooth texture.",texture_tag
+peach,Does this rubber object feel hard when pressed?,"No, the rubber object feels soft.",hardness_material
+papercup2,What material is used and how hard does it feel?,The object is made of paper and feels medium hardness.,material_hardness
+shampool,"Based on the tactile feedback, does this plastic object feel smooth?","Yes, the plastic object feels smooth.",roughness_material
+coffeecup_plastic_smooth_hard_bottom_edge,What object is being touched?,The object being touched is a Coffeecup.,object_identity
+spoon,Is this object hard or soft?,The object is very hard.,hardness_binary
+USB,Is this object made of rubber or plastic?,This object is made of plastic.,material_discrimination
+paperbox,Does this paper object feel hard when pressed?,"No, the paper object feels soft.",hardness_material
+paperbag2,What are the roughness and hardness of this object?,The surface is smooth and the object feels soft.,roughness_hardness
+plastic_box_bottom_hard_smooth,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+paperbag,Is this object made of metal or paper?,This object is made of paper.,material_discrimination
+rubber_toy,Is this object made of plastic or rubber?,This object is made of rubber.,material_discrimination
+spoon2,What object is being touched?,The object being touched is a Spoon.,object_identity
+spoon2,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+bowl,"Based on the tactile feedback, does this ceramic object feel smooth?","Yes, the ceramic object feels smooth.",roughness_material
+galssbottel_net_pattern_hard_smooth_1,What material is used and how hard does it feel?,The object is made of metal and feels very hard.,material_hardness
+grape,What are the roughness and hardness of this object?,The surface is smooth and the object feels soft.,roughness_hardness
+plastic_glove,What material is the object made of?,The object is made of plastic.,material_identity
+paper_box_medium_smooth,Is this object hard or soft?,The object is soft.,hardness_binary
+rubber_toy3,What are the roughness and hardness of this object?,The surface is smooth and the object feels medium hardness.,roughness_hardness
+bowl,What texture can be observed on the surface?,"The surface has a glossy, smooth texture.",texture_tag
+plastic_box_bottom_hard_smooth,What material is the object made of?,The object is made of plastic.,material_identity
+plastic_bottle2,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+metalbox,Is this object made of ceramic or metal?,This object is made of metal.,material_discrimination
+pill_bottle_hard_smooth_plastic_bottom_edge,Is this object hard or soft?,The object is very hard.,hardness_binary
+plastic_cup2,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+sponge,What texture can be observed on the surface?,The surface has a fibrous texture.,texture_tag
+vacuum_cup,Does this metal object feel hard when pressed?,"Yes, the metal object feels very hard.",hardness_material
+rubber_rabbittoy_hard_smooth_1,What object is being touched?,The object being touched is a Rabbit toy.,object_identity
+rubber_toy2,What object is being touched?,The object being touched is a rubber_toy2.,object_identity
+plush_toy,What are the roughness and hardness of this object?,The surface is smooth and the object feels soft.,roughness_hardness
+plush_toy,Is this object made of rubber or metal?,This object is made of rubber.,material_discrimination
+galssbottel_net_pattern_hard_smooth,Does this glass object feel hard when pressed?,"Yes, the glass object feels very hard.",hardness_material
+paperbox2,What material is the object made of?,The object is made of paper.,material_identity
+coffeecup_plastic_smooth_hard_bottom,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+glove,What material is the object made of?,The object is made of metal.,material_identity
+plastic_cup2,What material is the object made of?,The object is made of plastic.,material_identity
+plastic_box2,"Based on the tactile feedback, does this plastic object feel smooth?","Yes, the plastic object feels smooth.",roughness_material
+orange3,Is this object hard or soft?,The object is hard.,hardness_binary
+spoon2,Is this object made of plastic or metal?,This object is made of metal.,material_discrimination
+can_metal_hard_smooth,What are the roughness and hardness of this object?,The surface is smooth and the object feels very hard.,roughness_hardness
+plush_toy2,What material is the object made of?,The object is made of rubber.,material_identity
+plastic_cup,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+tomato,"Based on the tactile feedback, does this plastic object feel smooth?","Yes, the plastic object feels smooth.",roughness_material
+sponge,Is this object hard or soft?,The object is soft.,hardness_binary
+sponge,What material is used and how hard does it feel?,The object is made of rubber and feels soft.,material_hardness
+rubber_toy,What object is being touched?,The object being touched is a rubber_toy.,object_identity
+pill_bottle_hard_smooth_plastic_bottom_edge,What are the roughness and hardness of this object?,The surface is smooth and the object feels very hard.,roughness_hardness
+sponge_brush_s_sponge_soft_rough,What are the roughness and hardness of this object?,The surface is smooth and the object feels soft.,roughness_hardness
+iron_red_metal_box,What object is being touched?,The object being touched is a Iron red metal box.,object_identity
+papercup,What texture can be observed on the surface?,The surface has a ridged texture.,texture_tag
+can_metal_hard_smooth_bottom,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+plastic_box_bottom_hard_smooth_edge,"Based on the tactile feedback, does this plastic object feel smooth?","Yes, the plastic object feels smooth.",roughness_material
+plastic_box2,What are the roughness and hardness of this object?,The surface is smooth and the object feels very hard.,roughness_hardness
+tomato_medium_smooth_1,What object is being touched?,The object being touched is a Tomato.,object_identity
+rubber_rabbittoy_hard_smooth,Is this object made of rubber or plastic?,This object is made of rubber.,material_discrimination
+plastic_yellow_duck_beak,What object is being touched?,The object being touched is a Duck beak.,object_identity
+plastic_bottle2,What material is used and how hard does it feel?,The object is made of plastic and feels very hard.,material_hardness
+bowl3,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+wire,What texture can be observed on the surface?,The surface has a smooth texture.,texture_tag
+sponge_brush_handle,Does this plastic object feel hard when pressed?,"Yes, the plastic object feels very hard.",hardness_material
+shuttlecock,What texture can be observed on the surface?,The surface has a smooth texture.,texture_tag
+bowl_metal_plastic_bottom,What texture can be observed on the surface?,"The surface has a glossy, sleek, frictionless texture.",texture_tag
+banana,What material is the object made of?,The object is made of rubber.,material_identity
+bowl_metal_plastic_bottom,Is this object made of ceramic or metal?,This object is made of ceramic.,material_discrimination
+sponge_brush_s_sponge_soft_rough,Is this object made of ceramic or rubber?,This object is made of rubber.,material_discrimination
+paper,What material is the object made of?,The object is made of paper.,material_identity
+coffeecup_plastic_smooth_hard_bottom,What material is the object made of?,The object is made of plastic.,material_identity
+hotdog,What texture can be observed on the surface?,"The surface has a glossy, textured, smooth texture.",texture_tag
+paperbag,What material is the object made of?,The object is made of paper.,material_identity
+wire,What material is the object made of?,The object is made of rubber.,material_identity
+sponge_brush_handle,Is this object made of glass or plastic?,This object is made of plastic.,material_discrimination
+paperbag,"Based on the tactile feedback, does this paper object feel smooth?","Yes, the paper object feels smooth.",roughness_material
+sponge_brush_handle_1,What object is being touched?,The object being touched is a Sponge brush handle 1.,object_identity
+sponge_brush_handle,What texture can be observed on the surface?,"The surface has a even, smooth texture.",texture_tag
+peach_hard_rough,Is this object made of plastic or rubber?,This object is made of rubber.,material_discrimination
+glass_jar,What material is used and how hard does it feel?,The object is made of glass and feels very hard.,material_hardness
+onion2,Is this object hard or soft?,The object is soft.,hardness_binary
+shampool_2,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+vacuum_cup_lid,What are the roughness and hardness of this object?,The surface is smooth and the object feels very hard.,roughness_hardness
+bowl_metal_plastic_handle,What texture can be observed on the surface?,"The surface has a sleek, metallic, smooth texture.",texture_tag
+tomato_leaf_soft_rough_2,What texture can be observed on the surface?,The surface has a slick texture.,texture_tag
+rubber_rabbittoy_hard_smooth_ear,What object is being touched?,The object being touched is a rubber_rabbittoy_hard_smooth_ear.,object_identity
+galssbottel_net_pattern_hard_smooth_2,Is this object made of ceramic or glass?,This object is made of glass.,material_discrimination
+grape,Is this object made of rubber or metal?,This object is made of rubber.,material_discrimination
+rubber_rabbittoy_hard_smooth,What material is the object made of?,The object is made of rubber.,material_identity
+orange,What material is used and how hard does it feel?,The object is made of rubber and feels hard.,material_hardness
+can_metal_hard_smooth_top,What object is being touched?,The object being touched is a can.,object_identity
+coffeecup_plastic_smooth_hard_bottom_1,Is this object made of plastic or ceramic?,This object is made of plastic.,material_discrimination
+rubber_rabbittoy_hard_smooth_1,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+glass_jar,What are the roughness and hardness of this object?,The surface is smooth and the object feels very hard.,roughness_hardness
+orange2,Is this object hard or soft?,"The object has medium hardness, neither distinctly hard nor soft.",hardness_binary
+cd,Is this object hard or soft?,The object is hard.,hardness_binary
+3dprint2,What material is used and how hard does it feel?,The object is made of foam and feels medium hardness.,material_hardness
+paper_box_medium_smooth,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+cupshell_inside_smooth_hard,What object is being touched?,The object being touched is a Cup lid.,object_identity
+paperbag2,Is this object made of paper or ceramic?,This object is made of paper.,material_discrimination
+glass_jar2,Is this object made of plastic or glass?,This object is made of glass.,material_discrimination
+metalbox2,"Based on the tactile feedback, does this metal object feel smooth?","Yes, the metal object feels smooth.",roughness_material
+glass_jar2,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+tomato,What texture can be observed on the surface?,"The surface has a glossy, slick, smooth texture.",texture_tag
+woodcup2,What material is the object made of?,The object is made of wood.,material_identity
+plastic_box_bottom_hard_smooth,What material is used and how hard does it feel?,The object is made of plastic and feels hard.,material_hardness
+bowl_metal_plastic_edge,What object is being touched?,The object being touched is a bowl.,object_identity
+plastic_glove,What are the roughness and hardness of this object?,The surface is smooth and the object feels soft.,roughness_hardness
+iron_red_metal_box_smooth_edge,What are the roughness and hardness of this object?,The surface is smooth and the object feels very hard.,roughness_hardness
+glove,Is the surface of this object smooth or rough?,The surface is slightly rough.,roughness_binary
+bowl3,"Based on the tactile feedback, does this plastic object feel smooth?","Yes, the plastic object feels smooth.",roughness_material
+plastic_yellow_duck_beak,What are the roughness and hardness of this object?,The surface is smooth and the object feels soft.,roughness_hardness
+shuttlecock2,What texture can be observed on the surface?,The surface has a smooth texture.,texture_tag
+3dprint2,What texture can be observed on the surface?,The surface has a smooth texture.,texture_tag
+plastic_cup,What material is used and how hard does it feel?,The object is made of plastic and feels hard.,material_hardness
+bowl,What material is used and how hard does it feel?,The object is made of ceramic and feels very hard.,material_hardness
+pill_bottle_hard_smooth_plastic_cap,"Based on the tactile feedback, does this plastic object feel smooth?","Yes, the plastic object feels smooth.",roughness_material
+bowl,What object is being touched?,The object being touched is a Bowl.,object_identity
+papercup2,Is this object hard or soft?,"The object has medium hardness, neither distinctly hard nor soft.",hardness_binary
+plastic_cup,"Based on the tactile feedback, does this plastic object feel smooth?","Yes, the plastic object feels smooth.",roughness_material
+sponge_brush_handle,What object is being touched?,The object being touched is a sponge_brush_handle.,object_identity
+plastic_box,Is this object hard or soft?,The object is very hard.,hardness_binary
+vacuum_cup_lid,What object is being touched?,The object being touched is a Vacuum cup lid.,object_identity
+banana,What object is being touched?,The object being touched is a banana.,object_identity
+orange2,Does this rubber object feel hard when pressed?,"The rubber object has medium hardness, neither very hard nor soft.",hardness_material
+mouse_for_computer_scroll,Is this object hard or soft?,The object is soft.,hardness_binary
+sponge_brush_handle_1,What material is the object made of?,The object is made of rubber.,material_identity
+cupshell_inside_smooth_hard,Does this plastic object feel hard when pressed?,"Yes, the plastic object feels very hard.",hardness_material
+plush_toy2,What texture can be observed on the surface?,The surface has a smooth texture.,texture_tag
+plush_toy2,Is this object made of rubber or wood?,This object is made of rubber.,material_discrimination
+papercup,Does this paper object feel hard when pressed?,"Yes, the paper object feels hard.",hardness_material
+bowl_metal_plastic_bottom,Is this object hard or soft?,The object is hard.,hardness_binary
+coffeecup_plastic_smooth_hard_bottom_edge,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+woodcup,What material is the object made of?,The object is made of wood.,material_identity
+rubber_rabbittoy_hard_smooth,Does this rubber object feel hard when pressed?,"The rubber object has medium hardness, neither very hard nor soft.",hardness_material
+orange3,Is this object made of ceramic or rubber?,This object is made of rubber.,material_discrimination
+can_metal_hard_smooth_bottom,Is this object hard or soft?,The object is very hard.,hardness_binary
+glass_jar2,Does this glass object feel hard when pressed?,"Yes, the glass object feels very hard.",hardness_material
+sponge_brush_handle_1,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+spoon2,Is this object hard or soft?,The object is very hard.,hardness_binary
+banana,What are the roughness and hardness of this object?,The surface is smooth and the object feels soft.,roughness_hardness
+plush_toy2,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+coffeecup_plastic_smooth_hard_bottom_1,Is this object hard or soft?,"The object has medium hardness, neither distinctly hard nor soft.",hardness_binary
+banana,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+paper_box_medium_smooth,What object is being touched?,The object being touched is a Frozen coffee box.,object_identity
+pencilbox2,What are the roughness and hardness of this object?,The surface is smooth and the object feels hard.,roughness_hardness
+plastic_bottle,Is this object made of plastic or glass?,This object is made of plastic.,material_discrimination
+woodcup,Is this object hard or soft?,The object is very hard.,hardness_binary
+iron_red_metal_box,Is this object made of glass or metal?,This object is made of metal.,material_discrimination
+plush_toy,What material is the object made of?,The object is made of rubber.,material_identity
+peach,What object is being touched?,The object being touched is a Peach.,object_identity
+galssbottel_net_pattern_hard_smooth,Is this object hard or soft?,The object is very hard.,hardness_binary
+pill_bottle_hard_smooth_plastic_cap,Is this object made of plastic or ceramic?,This object is made of plastic.,material_discrimination
+can_metal_hard_smooth,Is this object hard or soft?,The object is very hard.,hardness_binary
+rubber_toy2,Is this object hard or soft?,The object is very hard.,hardness_binary
+glove,What texture can be observed on the surface?,"The surface has a textured, bumpy texture.",texture_tag
+sponge_brush_handle_1,What are the roughness and hardness of this object?,The surface is smooth and the object feels hard.,roughness_hardness
+orange2,Is the surface of this object smooth or rough?,The surface is rough.,roughness_binary
+sponge2,"Based on the tactile feedback, does this rubber object feel smooth?","No, the rubber object feels slightly rough.",roughness_material
+can_metal_hard_smooth,What texture can be observed on the surface?,"The surface has a glossy, sleek, reflective texture.",texture_tag
+plastic_box,What object is being touched?,The object being touched is a Plastic box.,object_identity
+shampool,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+USB,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+can_metal_hard_smooth,What object is being touched?,The object being touched is a can.,object_identity
+paper_box_medium_smooth_2,Does this paper object feel hard when pressed?,"No, the paper object feels soft.",hardness_material
+shampool_2,Does this plastic object feel hard when pressed?,"Yes, the plastic object feels very hard.",hardness_material
+3dprint,What are the roughness and hardness of this object?,The surface is slightly rough and the object feels soft.,roughness_hardness
+onion,Does this plastic object feel hard when pressed?,"Yes, the plastic object feels hard.",hardness_material
+bowl2,What material is the object made of?,The object is made of glass.,material_identity
+cd2,"Based on the tactile feedback, does this plastic object feel smooth?","Yes, the plastic object feels smooth.",roughness_material
+bowl_metal_plastic_bottom,Does this ceramic object feel hard when pressed?,"Yes, the ceramic object feels hard.",hardness_material
+cap,What texture can be observed on the surface?,"The surface has a glossy, slick, smooth texture.",texture_tag
+rubber_toy3,What material is used and how hard does it feel?,The object is made of rubber and feels medium hardness.,material_hardness
+paperbox2,What texture can be observed on the surface?,"The surface has a fibrous, flat texture.",texture_tag
+can_metal_hard_smooth,"Based on the tactile feedback, does this metal object feel smooth?","Yes, the metal object feels smooth.",roughness_material
+orange3,What texture can be observed on the surface?,"The surface has a bumpy, even texture.",texture_tag
+sponge_brush_s_sponge_soft_rough,"Based on the tactile feedback, does this rubber object feel smooth?","Yes, the rubber object feels smooth.",roughness_material
+sponge2,What material is the object made of?,The object is made of rubber.,material_identity
+onion2,What are the roughness and hardness of this object?,The surface is smooth and the object feels soft.,roughness_hardness
+metalbox,What texture can be observed on the surface?,"The surface has a flat, smooth texture.",texture_tag
+shampool_2,"Based on the tactile feedback, does this plastic object feel smooth?","Yes, the plastic object feels smooth.",roughness_material
+iron_red_metal_box,Does this metal object feel hard when pressed?,"Yes, the metal object feels very hard.",hardness_material
+spoon,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+galssbottel_net_pattern_hard_smooth_3,"Based on the tactile feedback, does this glass object feel smooth?","Yes, the glass object feels smooth.",roughness_material
+woodcup2,What texture can be observed on the surface?,"The surface has a sleek, polished, smooth texture.",texture_tag
+plastic_box2,What material is used and how hard does it feel?,The object is made of plastic and feels very hard.,material_hardness
+bowl2,What material is used and how hard does it feel?,The object is made of glass and feels very hard.,material_hardness
+peach_hard_rough,What material is the object made of?,The object is made of rubber.,material_identity
+rubber_rabbittoy_hard_smooth_ear,"Based on the tactile feedback, does this rubber object feel smooth?","Yes, the rubber object feels smooth.",roughness_material
+bowl_metal_plastic_edge,What material is used and how hard does it feel?,The object is made of metal and feels very hard.,material_hardness
+papercup2,Is this object made of paper or metal?,This object is made of paper.,material_discrimination
+metalbox2,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+paperbox2,"Based on the tactile feedback, does this paper object feel smooth?","No, the paper object feels slightly rough.",roughness_material
+plastic_bottle,"Based on the tactile feedback, does this plastic object feel smooth?","Yes, the plastic object feels smooth.",roughness_material
+papercup2,What object is being touched?,The object being touched is a Papercup.,object_identity
+glove,What material is used and how hard does it feel?,The object is made of metal and feels soft.,material_hardness
+coffeecup_plastic_smooth_hard_bottom_edge,What are the roughness and hardness of this object?,The surface is smooth and the object feels hard.,roughness_hardness
+cd,Does this plastic object feel hard when pressed?,"Yes, the plastic object feels hard.",hardness_material
+rubber_soft_ball_rough,"Based on the tactile feedback, does this rubber object feel smooth?","No, the rubber object feels slightly rough.",roughness_material
+sponge_brush_handle_1,Does this rubber object feel hard when pressed?,"Yes, the rubber object feels hard.",hardness_material
+woodcup3,What are the roughness and hardness of this object?,The surface is smooth and the object feels very hard.,roughness_hardness
+paper_box_medium_smooth,Does this paper object feel hard when pressed?,"No, the paper object feels soft.",hardness_material
+sponge,What are the roughness and hardness of this object?,The surface is rough and the object feels soft.,roughness_hardness
+shampool,What object is being touched?,The object being touched is a Shampoo bottle.,object_identity
+plastic_box2,Does this plastic object feel hard when pressed?,"Yes, the plastic object feels very hard.",hardness_material
+paperbag,Is this object hard or soft?,The object is soft.,hardness_binary
+coffeecup_plastic_smooth_hard_bottom_1,What are the roughness and hardness of this object?,The surface is smooth and the object feels medium hardness.,roughness_hardness
+bowl_metal_plastic_bottom,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+plastic_box_bottom_hard_smooth_1,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+plastic_box_bottom_hard_smooth_1,What material is the object made of?,The object is made of plastic.,material_identity
+plastic_box2,What object is being touched?,The object being touched is a plastic box.,object_identity
+cupshell_inside_smooth_hard,What texture can be observed on the surface?,"The surface has a polished, smooth texture.",texture_tag
+galssbottel_net_pattern_hard_smooth_1,What material is the object made of?,The object is made of metal.,material_identity
+iron_red_metal_box_smooth_edge,What object is being touched?,The object being touched is a Metal box.,object_identity
+galssbottel_net_pattern_hard_smooth,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+rubber_rabbittoy_hard_smooth_1,What material is the object made of?,The object is made of rubber.,material_identity
+peach,"Based on the tactile feedback, does this rubber object feel smooth?","No, the rubber object feels slightly rough.",roughness_material
+orange3,Does this rubber object feel hard when pressed?,"Yes, the rubber object feels hard.",hardness_material
+plastic_box_bottom_hard_smooth_edge,What object is being touched?,The object being touched is a Plastic box bottom.,object_identity
+spoon2,What material is the object made of?,The object is made of metal.,material_identity
+bowl_metal_plastic_edge,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+vacuum_cup,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+bowl2,What are the roughness and hardness of this object?,The surface is smooth and the object feels very hard.,roughness_hardness
+galssbottel_net_pattern_hard_smooth_2,"Based on the tactile feedback, does this glass object feel smooth?","Yes, the glass object feels smooth.",roughness_material
+cap,What material is used and how hard does it feel?,The object is made of plastic and feels soft.,material_hardness
+grape,"Based on the tactile feedback, does this rubber object feel smooth?","Yes, the rubber object feels smooth.",roughness_material
+pencilbox,Does this plastic object feel hard when pressed?,"Yes, the plastic object feels very hard.",hardness_material
+shampool,Is this object hard or soft?,The object is very hard.,hardness_binary
+peach,Is the surface of this object smooth or rough?,The surface is slightly rough.,roughness_binary
+rubber_toy,What material is the object made of?,The object is made of rubber.,material_identity
+peach_hard_rough,What are the roughness and hardness of this object?,The surface is slightly rough and the object feels soft.,roughness_hardness
+bowl_metal_plastic_handle,Is this object made of plastic or metal?,This object is made of metal.,material_discrimination
+glove,"Based on the tactile feedback, does this metal object feel smooth?","No, the metal object feels slightly rough.",roughness_material
+bowl3,What material is used and how hard does it feel?,The object is made of plastic and feels hard.,material_hardness
+plastic_box_bottom_hard_smooth,What object is being touched?,The object being touched is a plastic box bottom hard smooth.,object_identity
+bowl2,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+glove,Is this object hard or soft?,The object is soft.,hardness_binary
+pill_bottle_hard_smooth_plastic_bottom_edge,What material is the object made of?,The object is made of plastic.,material_identity
+3dprint2,"Based on the tactile feedback, does this foam object feel smooth?","No, the foam object feels slightly rough.",roughness_material
+paperbox2,Is this object made of paper or wood?,This object is made of paper.,material_discrimination
+paperbox,What material is used and how hard does it feel?,The object is made of paper and feels soft.,material_hardness
+spoon,What are the roughness and hardness of this object?,The surface is smooth and the object feels very hard.,roughness_hardness
+shampool_1,Does this plastic object feel hard when pressed?,"Yes, the plastic object feels very hard.",hardness_material
+plastic_box2,What texture can be observed on the surface?,"The surface has a sleek, even, smooth texture.",texture_tag
+wire,What are the roughness and hardness of this object?,The surface is smooth and the object feels very hard.,roughness_hardness
+plush_toy2,Does this rubber object feel hard when pressed?,"Yes, the rubber object feels hard.",hardness_material
+rubber_rabbittoy_hard_smooth,"Based on the tactile feedback, does this rubber object feel smooth?","Yes, the rubber object feels smooth.",roughness_material
+plastic_box_bottom_hard_smooth_1,Is this object hard or soft?,The object is very hard.,hardness_binary
+paperbox,What are the roughness and hardness of this object?,The surface is smooth and the object feels soft.,roughness_hardness
+vacuum_cup,"Based on the tactile feedback, does this metal object feel smooth?","Yes, the metal object feels smooth.",roughness_material
+bowl_metal_plastic_edge,Is this object hard or soft?,The object is very hard.,hardness_binary
+sponge_brush_s_sponge_soft_rough,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+plastic_box,"Based on the tactile feedback, does this plastic object feel smooth?","Yes, the plastic object feels smooth.",roughness_material
+onion2,"Based on the tactile feedback, does this metal object feel smooth?","Yes, the metal object feels smooth.",roughness_material
+plush_toy,Is this object hard or soft?,The object is soft.,hardness_binary
+cupshell_inside_smooth_hard,Is the surface of this object smooth or rough?,The surface is slightly rough.,roughness_binary
+plastic_cup2,What material is used and how hard does it feel?,The object is made of plastic and feels very hard.,material_hardness
+galssbottel_net_pattern_hard_smooth,What are the roughness and hardness of this object?,The surface is smooth and the object feels very hard.,roughness_hardness
+metalbox,What material is used and how hard does it feel?,The object is made of metal and feels very hard.,material_hardness
+galssbottel_net_pattern_hard_smooth_3,Is this object hard or soft?,The object is very hard.,hardness_binary
+sponge_brush_handle,What material is the object made of?,The object is made of plastic.,material_identity
+plastic_cup,Does this plastic object feel hard when pressed?,"Yes, the plastic object feels hard.",hardness_material
+paperbag,What are the roughness and hardness of this object?,The surface is smooth and the object feels soft.,roughness_hardness
+rubber_toy2,What are the roughness and hardness of this object?,The surface is slightly rough and the object feels very hard.,roughness_hardness
+plush_toy,Does this rubber object feel hard when pressed?,"No, the rubber object feels soft.",hardness_material
+bowl2,What object is being touched?,The object being touched is a bowl.,object_identity
+tomato_leaf_soft_rough_2,What object is being touched?,The object being touched is a Tomato.,object_identity
+plastic_box_bottom_hard_smooth_edge,What texture can be observed on the surface?,The surface has a smooth texture.,texture_tag
+plastic_cup3,What are the roughness and hardness of this object?,The surface is smooth and the object feels hard.,roughness_hardness
+wire,Is this object hard or soft?,The object is very hard.,hardness_binary
+iron_red_metal_box,Is this object hard or soft?,The object is very hard.,hardness_binary
+cd2,Is this object hard or soft?,The object is very hard.,hardness_binary
+cupshell_inside_smooth_hard,What material is the object made of?,The object is made of plastic.,material_identity
+vacuum_cup_lid,"Based on the tactile feedback, does this metal object feel smooth?","Yes, the metal object feels smooth.",roughness_material
+plastic_box_bottom_hard_smooth_1,What object is being touched?,The object being touched is a plastic box bottom.,object_identity
+spoon,Does this metal object feel hard when pressed?,"Yes, the metal object feels very hard.",hardness_material
+plastic_box2,What material is the object made of?,The object is made of plastic.,material_identity
+cd,"Based on the tactile feedback, does this plastic object feel smooth?","Yes, the plastic object feels smooth.",roughness_material
+iron_red_metal_box_smooth_edge,What material is the object made of?,The object is made of metal.,material_identity
+galssbottel_net_pattern_hard_smooth_1,What texture can be observed on the surface?,The surface has a smooth texture.,texture_tag
+paperbag2,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+cd2,What texture can be observed on the surface?,"The surface has a sleek, smooth texture.",texture_tag
+woodcup2,Does this wood object feel hard when pressed?,"Yes, the wood object feels hard.",hardness_material
+tomato,Does this plastic object feel hard when pressed?,"No, the plastic object feels soft.",hardness_material
+galssbottel_net_pattern_hard_smooth_3,Is this object made of plastic or glass?,This object is made of glass.,material_discrimination
+cd,What are the roughness and hardness of this object?,The surface is smooth and the object feels hard.,roughness_hardness
+USB,What material is the object made of?,The object is made of plastic.,material_identity
+metalbox2,Is this object made of glass or metal?,This object is made of metal.,material_discrimination
+grape,What texture can be observed on the surface?,"The surface has a glossy, smooth texture.",texture_tag
+metalbox2,What texture can be observed on the surface?,"The surface has a glossy, sleek, flat texture.",texture_tag
+glass_jar,What material is the object made of?,The object is made of glass.,material_identity
+rubber_rabbittoy_hard_smooth,What object is being touched?,The object being touched is a Rubber rabbit toy.,object_identity
+rubber_rabbittoy_hard_smooth,Is this object hard or soft?,"The object has medium hardness, neither distinctly hard nor soft.",hardness_binary
+orange2,What material is the object made of?,The object is made of rubber.,material_identity
+pencilbox,Is this object hard or soft?,The object is very hard.,hardness_binary
+metalbox,What are the roughness and hardness of this object?,The surface is smooth and the object feels very hard.,roughness_hardness
+orange2,What are the roughness and hardness of this object?,The surface is rough and the object feels medium hardness.,roughness_hardness
+spoon,"Based on the tactile feedback, does this metal object feel smooth?","Yes, the metal object feels smooth.",roughness_material
+pill_bottle_hard_smooth_plastic_cap,What are the roughness and hardness of this object?,The surface is smooth and the object feels very hard.,roughness_hardness
+plastic_cup3,What object is being touched?,The object being touched is a plastic cup.,object_identity
+paperbox,"Based on the tactile feedback, does this paper object feel smooth?","Yes, the paper object feels smooth.",roughness_material
+rubber_rabbittoy_hard_smooth_ear,What texture can be observed on the surface?,The surface has a smooth texture.,texture_tag
+tomato_leaf_soft_rough_2,What material is the object made of?,The object is made of rubber.,material_identity
+banana,What material is used and how hard does it feel?,The object is made of rubber and feels soft.,material_hardness
+bowl3,What material is the object made of?,The object is made of plastic.,material_identity
+glove2,What are the roughness and hardness of this object?,The surface is slightly rough and the object feels medium hardness.,roughness_hardness
+plastic_box_bottom_hard_smooth_1,"Based on the tactile feedback, does this plastic object feel smooth?","Yes, the plastic object feels smooth.",roughness_material
+coffeecup_plastic_smooth_hard_bottom,Is this object made of plastic or glass?,This object is made of plastic.,material_discrimination
+orange,Does this rubber object feel hard when pressed?,"Yes, the rubber object feels hard.",hardness_material
+sponge,"Based on the tactile feedback, does this rubber object feel smooth?","No, the rubber object feels rough.",roughness_material
+paper,Does this paper object feel hard when pressed?,"No, the paper object feels soft.",hardness_material
+3dprint2,Is the surface of this object smooth or rough?,The surface is slightly rough.,roughness_binary
+sponge,Does this rubber object feel hard when pressed?,"No, the rubber object feels soft.",hardness_material
+rubber_toy2,What material is used and how hard does it feel?,The object is made of rubber and feels very hard.,material_hardness
+spoon2,What material is used and how hard does it feel?,The object is made of metal and feels very hard.,material_hardness
+plastic_bottle,What are the roughness and hardness of this object?,The surface is smooth and the object feels medium hardness.,roughness_hardness
+mouse_for_computer_scroll,What material is the object made of?,The object is made of plastic.,material_identity
+papercup2,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+shampool_1,What material is used and how hard does it feel?,The object is made of plastic and feels very hard.,material_hardness
+orange3,What material is used and how hard does it feel?,The object is made of rubber and feels hard.,material_hardness
+plush_toy2,"Based on the tactile feedback, does this rubber object feel smooth?","Yes, the rubber object feels smooth.",roughness_material
+paper_box_medium_smooth,"Based on the tactile feedback, does this paper object feel smooth?","Yes, the paper object feels smooth.",roughness_material
+hotdog,What object is being touched?,The object being touched is a Hotdog bun.,object_identity
+plastic_glove,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+cd2,What material is used and how hard does it feel?,The object is made of plastic and feels very hard.,material_hardness
+pencilbox,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+bowl_metal_plastic_handle,What material is the object made of?,The object is made of metal.,material_identity
+shampool_1,What are the roughness and hardness of this object?,The surface is smooth and the object feels very hard.,roughness_hardness
+wire,What material is used and how hard does it feel?,The object is made of rubber and feels very hard.,material_hardness
+rubber_soft_ball_rough,Is this object made of glass or rubber?,This object is made of rubber.,material_discrimination
+spoon2,Does this metal object feel hard when pressed?,"Yes, the metal object feels very hard.",hardness_material
+plastic_glove,"Based on the tactile feedback, does this plastic object feel smooth?","Yes, the plastic object feels smooth.",roughness_material
+orange,Is this object made of rubber or metal?,This object is made of rubber.,material_discrimination
+glove,Does this metal object feel hard when pressed?,"No, the metal object feels soft.",hardness_material
+glass_jar,"Based on the tactile feedback, does this glass object feel smooth?","Yes, the glass object feels smooth.",roughness_material
+plastic_bottle2,"Based on the tactile feedback, does this plastic object feel smooth?","Yes, the plastic object feels smooth.",roughness_material
+glass_jar2,What material is used and how hard does it feel?,The object is made of glass and feels very hard.,material_hardness
+hotdog,What material is used and how hard does it feel?,The object is made of rubber and feels soft.,material_hardness
+3dprint2,What object is being touched?,The object being touched is a Block.,object_identity
+peach,What material is the object made of?,The object is made of rubber.,material_identity
+plastic_cup2,What object is being touched?,The object being touched is a plastic cup.,object_identity
+bowl_metal_plastic_edge,Does this metal object feel hard when pressed?,"Yes, the metal object feels very hard.",hardness_material
+woodcup2,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+plush_toy2,What material is used and how hard does it feel?,The object is made of rubber and feels hard.,material_hardness
+peach,What material is used and how hard does it feel?,The object is made of rubber and feels soft.,material_hardness
+iron_red_metal_box_smooth_edge,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+peach,Is this object made of plastic or rubber?,This object is made of rubber.,material_discrimination
+banana,Is this object hard or soft?,The object is soft.,hardness_binary
+iron_red_metal_box_smooth_edge,Is this object made of metal or glass?,This object is made of metal.,material_discrimination
+sponge_brush_handle_1,"Based on the tactile feedback, does this rubber object feel smooth?","Yes, the rubber object feels smooth.",roughness_material
+cd,What texture can be observed on the surface?,"The surface has a reflective, polished, shiny texture.",texture_tag
+paperbox,Is this object hard or soft?,The object is soft.,hardness_binary
+USB,Does this plastic object feel hard when pressed?,"The plastic object has medium hardness, neither very hard nor soft.",hardness_material
+galssbottel_net_pattern_hard_smooth_3,Does this glass object feel hard when pressed?,"Yes, the glass object feels very hard.",hardness_material
+plush_toy2,Is this object hard or soft?,The object is hard.,hardness_binary
+sponge_brush_handle_1,Is this object hard or soft?,The object is hard.,hardness_binary
+spoon2,What texture can be observed on the surface?,"The surface has a polished, shiny, slick texture.",texture_tag
+vacuum_cup,What material is the object made of?,The object is made of metal.,material_identity
+mouse_for_computer_scroll,What texture can be observed on the surface?,The surface has a smooth texture.,texture_tag
+bowl_metal_plastic_edge,What texture can be observed on the surface?,"The surface has a sleek, reflective, polished texture.",texture_tag
+plastic_yellow_duck_beak,"Based on the tactile feedback, does this plastic object feel smooth?","Yes, the plastic object feels smooth.",roughness_material
+shampool,What material is the object made of?,The object is made of plastic.,material_identity
+paperbag,What texture can be observed on the surface?,"The surface has a even, smooth texture.",texture_tag
+plush_toy2,What are the roughness and hardness of this object?,The surface is smooth and the object feels hard.,roughness_hardness
+can_metal_hard_smooth,Is this object made of metal or wood?,This object is made of metal.,material_discrimination
+plastic_bottle,Is this object hard or soft?,"The object has medium hardness, neither distinctly hard nor soft.",hardness_binary
+tomato_leaf_soft_rough_2,What are the roughness and hardness of this object?,The surface is slightly rough and the object feels soft.,roughness_hardness
+pill_bottle_hard_smooth_plastic_cap,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+cd,Is this object made of metal or plastic?,This object is made of plastic.,material_discrimination
+can_metal_hard_smooth_top,What are the roughness and hardness of this object?,The surface is smooth and the object feels very hard.,roughness_hardness
+wire,Is this object made of wood or rubber?,This object is made of rubber.,material_discrimination
+coffeecup_plastic_smooth_hard_bottom_edge,Does this paper object feel hard when pressed?,"Yes, the paper object feels hard.",hardness_material
+iron_red_metal_box_smooth_edge,Is this object hard or soft?,The object is very hard.,hardness_binary
+plastic_yellow_duck_wing,"Based on the tactile feedback, does this plastic object feel smooth?","No, the plastic object feels rough.",roughness_material
+galssbottel_net_pattern_hard_smooth_2,Does this glass object feel hard when pressed?,"Yes, the glass object feels hard.",hardness_material
+plastic_cup3,What material is the object made of?,The object is made of plastic.,material_identity
+cd2,Does this plastic object feel hard when pressed?,"Yes, the plastic object feels very hard.",hardness_material
+paper_box_medium_smooth_2,"Based on the tactile feedback, does this paper object feel smooth?","Yes, the paper object feels smooth.",roughness_material
+bowl_metal_plastic_handle,What material is used and how hard does it feel?,The object is made of metal and feels medium hardness.,material_hardness
+onion2,What object is being touched?,The object being touched is a Onion.,object_identity
+bowl,Is this object hard or soft?,The object is very hard.,hardness_binary
+plastic_box_bottom_hard_smooth_edge,Is this object hard or soft?,The object is very hard.,hardness_binary
+metalbox2,Is this object hard or soft?,The object is very hard.,hardness_binary
+USB,What are the roughness and hardness of this object?,The surface is smooth and the object feels medium hardness.,roughness_hardness
+plastic_yellow_duck_wing,What are the roughness and hardness of this object?,The surface is rough and the object feels soft.,roughness_hardness
+rubber_toy3,Is this object made of ceramic or rubber?,This object is made of rubber.,material_discrimination
+can_metal_hard_smooth_top,What texture can be observed on the surface?,"The surface has a metallic, smooth texture.",texture_tag
+mouse_for_computer_1,Does this plastic object feel hard when pressed?,"Yes, the plastic object feels very hard.",hardness_material
+orange,"Based on the tactile feedback, does this rubber object feel smooth?","No, the rubber object feels slightly rough.",roughness_material
+peach_hard_rough,What object is being touched?,The object being touched is a Peach.,object_identity
+USB,What texture can be observed on the surface?,"The surface has a glossy, sleek, polished texture.",texture_tag
+woodcup,Does this wood object feel hard when pressed?,"Yes, the wood object feels very hard.",hardness_material
+rubber_rabbittoy_hard_smooth_1,What are the roughness and hardness of this object?,The surface is smooth and the object feels hard.,roughness_hardness
+galssbottel_net_pattern_hard_smooth_3,What texture can be observed on the surface?,"The surface has a polished, smooth texture.",texture_tag
+woodcup2,What object is being touched?,The object being touched is a Wooden cup.,object_identity
+paperbox,Is this object made of paper or ceramic?,This object is made of paper.,material_discrimination
+cupshell_inside_smooth_hard,Is this object hard or soft?,The object is very hard.,hardness_binary
+plastic_bottle,Does this plastic object feel hard when pressed?,"The plastic object has medium hardness, neither very hard nor soft.",hardness_material
+tomato_medium_smooth_1,What are the roughness and hardness of this object?,The surface is smooth and the object feels soft.,roughness_hardness
+sponge2,Is this object hard or soft?,The object is soft.,hardness_binary
+orange3,What material is the object made of?,The object is made of rubber.,material_identity
+3dprint,Does this rubber object feel hard when pressed?,"No, the rubber object feels soft.",hardness_material
+plastic_glove,What material is used and how hard does it feel?,The object is made of plastic and feels soft.,material_hardness
+metalbox,What material is the object made of?,The object is made of metal.,material_identity
+USB,What object is being touched?,The object being touched is a USB hub.,object_identity
+metalbox2,What object is being touched?,The object being touched is a Metal box.,object_identity
+plastic_yellow_duck_wing,Is this object hard or soft?,The object is soft.,hardness_binary
+coffeecup_plastic_smooth_hard_bottom_edge,What material is the object made of?,The object is made of paper.,material_identity
+glass_jar,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+mouse_for_computer_scroll,What are the roughness and hardness of this object?,The surface is smooth and the object feels soft.,roughness_hardness
+paper_box_medium_smooth_2,What texture can be observed on the surface?,The surface has a smooth texture.,texture_tag
+rubber_rabbittoy_hard_smooth,What texture can be observed on the surface?,The surface has a smooth texture.,texture_tag
+mouse_for_computer_1,What texture can be observed on the surface?,"The surface has a sleek, smooth texture.",texture_tag
+plastic_bottle2,What texture can be observed on the surface?,"The surface has a glossy, smooth texture.",texture_tag
+glass_jar,Is this object hard or soft?,The object is very hard.,hardness_binary
+coffeecup_plastic_smooth_hard_bottom_edge,What texture can be observed on the surface?,The surface has a smooth texture.,texture_tag
+can_metal_hard_smooth_bottom,Does this metal object feel hard when pressed?,"Yes, the metal object feels very hard.",hardness_material
+metalbox,"Based on the tactile feedback, does this metal object feel smooth?","Yes, the metal object feels smooth.",roughness_material
+wire,Does this rubber object feel hard when pressed?,"Yes, the rubber object feels very hard.",hardness_material
+can_metal_hard_smooth_bottom,"Based on the tactile feedback, does this metal object feel smooth?","Yes, the metal object feels smooth.",roughness_material
+can_metal_hard_smooth,What material is the object made of?,The object is made of metal.,material_identity
+plastic_glove,Is this object made of metal or plastic?,This object is made of plastic.,material_discrimination
+woodcup2,Is this object hard or soft?,The object is hard.,hardness_binary
+iron_red_metal_box,What are the roughness and hardness of this object?,The surface is smooth and the object feels very hard.,roughness_hardness
+plastic_box_bottom_hard_smooth_1,What texture can be observed on the surface?,"The surface has a glossy, smooth texture.",texture_tag
+spoon2,What are the roughness and hardness of this object?,The surface is smooth and the object feels very hard.,roughness_hardness
+rubber_rabbittoy_hard_smooth_ear,Does this rubber object feel hard when pressed?,"Yes, the rubber object feels hard.",hardness_material
+tomato_medium_smooth_1,Is this object made of ceramic or plastic?,This object is made of plastic.,material_discrimination
+glass_jar2,What texture can be observed on the surface?,"The surface has a sleek, smooth texture.",texture_tag
+paper,Is this object made of paper or metal?,This object is made of paper.,material_discrimination
+grape,What material is the object made of?,The object is made of rubber.,material_identity
+plastic_cup3,Is this object hard or soft?,The object is hard.,hardness_binary
+paperbag2,What material is used and how hard does it feel?,The object is made of paper and feels soft.,material_hardness
+papercup2,What are the roughness and hardness of this object?,The surface is smooth and the object feels medium hardness.,roughness_hardness
+spoon,What object is being touched?,The object being touched is a spoon.,object_identity
+galssbottel_net_pattern_hard_smooth_1,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+galssbottel_net_pattern_hard_smooth_2,Is this object hard or soft?,The object is hard.,hardness_binary
+paper_box_medium_smooth,Is this object made of paper or glass?,This object is made of paper.,material_discrimination
+plastic_box_bottom_hard_smooth,What texture can be observed on the surface?,"The surface has a glossy, smooth texture.",texture_tag
+can_metal_hard_smooth_top,Is this object made of metal or rubber?,This object is made of metal.,material_discrimination
+paper,What material is used and how hard does it feel?,The object is made of paper and feels soft.,material_hardness
+plastic_yellow_duck_beak,What material is used and how hard does it feel?,The object is made of plastic and feels soft.,material_hardness
+onion,What material is used and how hard does it feel?,The object is made of plastic and feels hard.,material_hardness
+papercup,What object is being touched?,The object being touched is a papercup.,object_identity
+woodcup3,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+iron_red_metal_box,"Based on the tactile feedback, does this metal object feel smooth?","Yes, the metal object feels smooth.",roughness_material
+pencilbox2,What material is used and how hard does it feel?,The object is made of plastic and feels hard.,material_hardness
+plastic_glove,Does this plastic object feel hard when pressed?,"No, the plastic object feels soft.",hardness_material
+cap,Is this object made of plastic or ceramic?,This object is made of plastic.,material_discrimination
+bowl_metal_plastic_handle,Does this metal object feel hard when pressed?,"The metal object has medium hardness, neither very hard nor soft.",hardness_material
+paper_box_medium_smooth,What texture can be observed on the surface?,"The surface has a glossy, smooth texture.",texture_tag
+bowl_metal_plastic_edge,"Based on the tactile feedback, does this metal object feel smooth?","Yes, the metal object feels smooth.",roughness_material
+glove2,"Based on the tactile feedback, does this plastic object feel smooth?","No, the plastic object feels slightly rough.",roughness_material
+pencilbox2,Does this plastic object feel hard when pressed?,"Yes, the plastic object feels hard.",hardness_material
+tomato,What material is the object made of?,The object is made of plastic.,material_identity
+paper_box_medium_smooth_2,What are the roughness and hardness of this object?,The surface is smooth and the object feels soft.,roughness_hardness
+papercup2,"Based on the tactile feedback, does this paper object feel smooth?","Yes, the paper object feels smooth.",roughness_material
+cd2,What object is being touched?,The object being touched is a CD.,object_identity
+cupshell_inside_smooth_hard,"Based on the tactile feedback, does this plastic object feel smooth?","No, the plastic object feels slightly rough.",roughness_material
+onion,What are the roughness and hardness of this object?,The surface is smooth and the object feels hard.,roughness_hardness
+plastic_box,What material is the object made of?,The object is made of plastic.,material_identity
+3dprint,Is this object hard or soft?,The object is soft.,hardness_binary
+rubber_toy3,What object is being touched?,The object being touched is a robot toy.,object_identity
+galssbottel_net_pattern_hard_smooth,What texture can be observed on the surface?,"The surface has a textured, ridged texture.",texture_tag
+shampool,Is this object made of plastic or rubber?,This object is made of plastic.,material_discrimination
+paperbox2,What object is being touched?,The object being touched is a cardboard box.,object_identity
+metalbox,Is this object hard or soft?,The object is very hard.,hardness_binary
+coffeecup_plastic_smooth_hard_bottom,What texture can be observed on the surface?,The surface has a smooth texture.,texture_tag
+pill_bottle_hard_smooth_plastic_cap,Is this object hard or soft?,The object is very hard.,hardness_binary
+mouse_for_computer_scroll,Does this plastic object feel hard when pressed?,"No, the plastic object feels soft.",hardness_material
+paper_box_medium_smooth,What material is used and how hard does it feel?,The object is made of paper and feels soft.,material_hardness
+plastic_cup2,Is this object hard or soft?,The object is very hard.,hardness_binary
+paperbag,What material is used and how hard does it feel?,The object is made of paper and feels soft.,material_hardness
+plastic_cup,What material is the object made of?,The object is made of plastic.,material_identity
+vacuum_cup,What are the roughness and hardness of this object?,The surface is smooth and the object feels very hard.,roughness_hardness
+glove,Is this object made of wood or metal?,This object is made of metal.,material_discrimination
+can_metal_hard_smooth_bottom,What object is being touched?,The object being touched is a can.,object_identity
+coffeecup_plastic_smooth_hard_bottom_1,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+wire,What object is being touched?,The object being touched is a Cable.,object_identity
+hotdog,What are the roughness and hardness of this object?,The surface is smooth and the object feels soft.,roughness_hardness
+woodcup2,"Based on the tactile feedback, does this wood object feel smooth?","Yes, the wood object feels smooth.",roughness_material
+woodcup2,Is this object made of plastic or wood?,This object is made of wood.,material_discrimination
+orange,Is the surface of this object smooth or rough?,The surface is slightly rough.,roughness_binary
+papercup2,What material is the object made of?,The object is made of paper.,material_identity
+sponge,What object is being touched?,The object being touched is a Sponge.,object_identity
+bowl,Does this ceramic object feel hard when pressed?,"Yes, the ceramic object feels very hard.",hardness_material
+cd,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+shuttlecock,Is this object hard or soft?,The object is soft.,hardness_binary
+woodcup,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+plastic_cup,What are the roughness and hardness of this object?,The surface is smooth and the object feels hard.,roughness_hardness
+plastic_box_bottom_hard_smooth_edge,What material is used and how hard does it feel?,The object is made of plastic and feels very hard.,material_hardness
+sponge_brush_s_sponge_soft_rough,What material is the object made of?,The object is made of rubber.,material_identity
+paper_box_medium_smooth_2,What material is used and how hard does it feel?,The object is made of paper and feels soft.,material_hardness
+iron_red_metal_box,What texture can be observed on the surface?,"The surface has a polished, metallic, smooth texture.",texture_tag
+plastic_box_bottom_hard_smooth_1,What material is used and how hard does it feel?,The object is made of plastic and feels very hard.,material_hardness
+tomato,What material is used and how hard does it feel?,The object is made of plastic and feels soft.,material_hardness
+rubber_toy2,What material is the object made of?,The object is made of rubber.,material_identity
+glove2,Does this plastic object feel hard when pressed?,"The plastic object has medium hardness, neither very hard nor soft.",hardness_material
+sponge,Is the surface of this object smooth or rough?,The surface is rough.,roughness_binary
+hotdog,What material is the object made of?,The object is made of rubber.,material_identity
+3dprint,What object is being touched?,The object being touched is a Gadget Holder.,object_identity
+pencilbox,What are the roughness and hardness of this object?,The surface is smooth and the object feels very hard.,roughness_hardness
+mouse_for_computer_1,What are the roughness and hardness of this object?,The surface is smooth and the object feels very hard.,roughness_hardness
+sponge2,What material is used and how hard does it feel?,The object is made of rubber and feels soft.,material_hardness
+pill_bottle_hard_smooth_plastic_bottom_edge,What material is used and how hard does it feel?,The object is made of plastic and feels very hard.,material_hardness
+plastic_box_bottom_hard_smooth_edge,What are the roughness and hardness of this object?,The surface is smooth and the object feels very hard.,roughness_hardness
+cd,What material is used and how hard does it feel?,The object is made of plastic and feels hard.,material_hardness
+tomato_medium_smooth_1,What texture can be observed on the surface?,"The surface has a even, smooth texture.",texture_tag
+onion,Is this object made of glass or plastic?,This object is made of plastic.,material_discrimination
+rubber_toy,Is this object hard or soft?,The object is very hard.,hardness_binary
+sponge_brush_handle,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+plastic_box,What material is used and how hard does it feel?,The object is made of plastic and feels very hard.,material_hardness
+sponge2,Is this object made of rubber or plastic?,This object is made of rubber.,material_discrimination
+rubber_toy2,Is this object made of glass or rubber?,This object is made of rubber.,material_discrimination
+iron_red_metal_box_smooth_edge,"Based on the tactile feedback, does this metal object feel smooth?","Yes, the metal object feels smooth.",roughness_material
+mouse_for_computer_scroll,What object is being touched?,The object being touched is a Computer mouse.,object_identity
+hotdog,Does this rubber object feel hard when pressed?,"No, the rubber object feels soft.",hardness_material
+papercup,Is the surface of this object smooth or rough?,The surface is rough.,roughness_binary
+plastic_cup2,What texture can be observed on the surface?,"The surface has a glossy, smooth texture.",texture_tag
+bowl_metal_plastic_edge,What are the roughness and hardness of this object?,The surface is smooth and the object feels very hard.,roughness_hardness
+rubber_rabbittoy_hard_smooth_ear,What material is used and how hard does it feel?,The object is made of rubber and feels hard.,material_hardness
+plastic_yellow_duck_beak,Is this object hard or soft?,The object is soft.,hardness_binary
+iron_red_metal_box_smooth_edge,What material is used and how hard does it feel?,The object is made of metal and feels very hard.,material_hardness
+shampool,What are the roughness and hardness of this object?,The surface is smooth and the object feels very hard.,roughness_hardness
+rubber_toy3,Does this rubber object feel hard when pressed?,"The rubber object has medium hardness, neither very hard nor soft.",hardness_material
+plush_toy,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+coffeecup_plastic_smooth_hard_bottom_1,What material is the object made of?,The object is made of plastic.,material_identity
+peach_hard_rough,Does this rubber object feel hard when pressed?,"No, the rubber object feels soft.",hardness_material
+papercup2,Does this paper object feel hard when pressed?,"The paper object has medium hardness, neither very hard nor soft.",hardness_material
+3dprint,What material is the object made of?,The object is made of rubber.,material_identity
+plastic_box,Does this plastic object feel hard when pressed?,"Yes, the plastic object feels very hard.",hardness_material
+shuttlecock,Is the surface of this object smooth or rough?,The surface is slightly rough.,roughness_binary
+galssbottel_net_pattern_hard_smooth_2,What object is being touched?,The object being touched is a Glass bottle.,object_identity
+tomato_leaf_soft_rough_2,Is this object made of glass or rubber?,This object is made of rubber.,material_discrimination
+shuttlecock2,Is this object made of metal or unknown?,This object is made of unknown.,material_discrimination
+metalbox,Does this metal object feel hard when pressed?,"Yes, the metal object feels very hard.",hardness_material
+rubber_soft_ball_rough,What material is used and how hard does it feel?,The object is made of rubber and feels soft.,material_hardness
+papercup,What are the roughness and hardness of this object?,The surface is rough and the object feels hard.,roughness_hardness
+plastic_box_bottom_hard_smooth_1,What are the roughness and hardness of this object?,The surface is smooth and the object feels very hard.,roughness_hardness
+onion2,What material is used and how hard does it feel?,The object is made of metal and feels soft.,material_hardness
+plastic_cup3,Does this plastic object feel hard when pressed?,"Yes, the plastic object feels hard.",hardness_material
+orange2,"Based on the tactile feedback, does this rubber object feel smooth?","No, the rubber object feels rough.",roughness_material
+onion2,Does this metal object feel hard when pressed?,"No, the metal object feels soft.",hardness_material
+plastic_box_bottom_hard_smooth,What are the roughness and hardness of this object?,The surface is smooth and the object feels hard.,roughness_hardness
+rubber_toy,What are the roughness and hardness of this object?,The surface is smooth and the object feels very hard.,roughness_hardness
+shampool_2,Is this object made of plastic or ceramic?,This object is made of plastic.,material_discrimination
+plastic_cup,Is this object hard or soft?,The object is hard.,hardness_binary
+cap,What material is the object made of?,The object is made of plastic.,material_identity
+cd2,Is this object made of wood or plastic?,This object is made of plastic.,material_discrimination
+plastic_bottle,What object is being touched?,The object being touched is a plastic bottle.,object_identity
+plastic_box,Is this object made of plastic or rubber?,This object is made of plastic.,material_discrimination
+USB,What material is used and how hard does it feel?,The object is made of plastic and feels medium hardness.,material_hardness
+iron_red_metal_box_smooth_edge,What texture can be observed on the surface?,The surface has a smooth texture.,texture_tag
+rubber_toy,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+mouse_for_computer_1,What material is the object made of?,The object is made of plastic.,material_identity
+papercup,Is this object hard or soft?,The object is hard.,hardness_binary
+rubber_rabbittoy_hard_smooth,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+orange3,What object is being touched?,The object being touched is a Apple.,object_identity
+shampool,What material is used and how hard does it feel?,The object is made of plastic and feels very hard.,material_hardness
+glass_jar2,What material is the object made of?,The object is made of glass.,material_identity
+woodcup3,What material is used and how hard does it feel?,The object is made of wood and feels very hard.,material_hardness
+iron_red_metal_box_smooth_edge,Does this metal object feel hard when pressed?,"Yes, the metal object feels very hard.",hardness_material
+mouse_for_computer_1,What object is being touched?,The object being touched is a Computer mouse.,object_identity
+coffeecup_plastic_smooth_hard_bottom,What are the roughness and hardness of this object?,The surface is smooth and the object feels hard.,roughness_hardness
+rubber_rabbittoy_hard_smooth_ear,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+USB,"Based on the tactile feedback, does this plastic object feel smooth?","Yes, the plastic object feels smooth.",roughness_material
+cupshell_inside_smooth_hard,What material is used and how hard does it feel?,The object is made of plastic and feels very hard.,material_hardness
+wire,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+hotdog,Is this object made of rubber or glass?,This object is made of rubber.,material_discrimination
+orange2,What texture can be observed on the surface?,The surface has a waxy texture.,texture_tag
+paper_box_medium_smooth_2,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+coffeecup_plastic_smooth_hard_bottom_1,"Based on the tactile feedback, does this plastic object feel smooth?","Yes, the plastic object feels smooth.",roughness_material
+cupshell_inside_smooth_hard,What are the roughness and hardness of this object?,The surface is slightly rough and the object feels very hard.,roughness_hardness
+paperbag,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+banana,What texture can be observed on the surface?,"The surface has a glossy, smooth texture.",texture_tag
+metalbox,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+bowl_metal_plastic_bottom,What object is being touched?,The object being touched is a bowl.,object_identity
+can_metal_hard_smooth_top,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+galssbottel_net_pattern_hard_smooth_3,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+rubber_toy,Does this rubber object feel hard when pressed?,"Yes, the rubber object feels very hard.",hardness_material
+plastic_cup3,What material is used and how hard does it feel?,The object is made of plastic and feels hard.,material_hardness
+mouse_for_computer_scroll,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+orange,What object is being touched?,The object being touched is a Apple.,object_identity
+cd2,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+USB,Is this object hard or soft?,"The object has medium hardness, neither distinctly hard nor soft.",hardness_binary
+mouse_for_computer_scroll,"Based on the tactile feedback, does this plastic object feel smooth?","Yes, the plastic object feels smooth.",roughness_material
+cd2,What material is the object made of?,The object is made of plastic.,material_identity
+can_metal_hard_smooth_top,Does this metal object feel hard when pressed?,"Yes, the metal object feels very hard.",hardness_material
+woodcup,What texture can be observed on the surface?,"The surface has a polished, smooth texture.",texture_tag
+woodcup3,What material is the object made of?,The object is made of wood.,material_identity
+plastic_yellow_duck_beak,Is this object made of plastic or glass?,This object is made of plastic.,material_discrimination
+woodcup,What are the roughness and hardness of this object?,The surface is smooth and the object feels very hard.,roughness_hardness
+pencilbox2,What texture can be observed on the surface?,"The surface has a slippery, smooth texture.",texture_tag
+rubber_toy3,Is this object hard or soft?,"The object has medium hardness, neither distinctly hard nor soft.",hardness_binary
+bowl3,Is this object hard or soft?,The object is hard.,hardness_binary
+rubber_soft_ball_rough,What object is being touched?,The object being touched is a rubber soft ball rough.,object_identity
+woodcup3,Does this wood object feel hard when pressed?,"Yes, the wood object feels very hard.",hardness_material
+shampool,Does this plastic object feel hard when pressed?,"Yes, the plastic object feels very hard.",hardness_material
+spoon2,"Based on the tactile feedback, does this metal object feel smooth?","Yes, the metal object feels smooth.",roughness_material
+orange3,What are the roughness and hardness of this object?,The surface is rough and the object feels hard.,roughness_hardness
+plastic_bottle,What texture can be observed on the surface?,"The surface has a glossy, smooth texture.",texture_tag
+plush_toy,"Based on the tactile feedback, does this rubber object feel smooth?","Yes, the rubber object feels smooth.",roughness_material
+hotdog,Is this object hard or soft?,The object is soft.,hardness_binary
+vacuum_cup,Is this object made of ceramic or metal?,This object is made of metal.,material_discrimination
+bowl_metal_plastic_handle,What object is being touched?,The object being touched is a bowl.,object_identity
+onion2,Is this object made of metal or rubber?,This object is made of metal.,material_discrimination
+can_metal_hard_smooth_bottom,What material is the object made of?,The object is made of metal.,material_identity
+pencilbox2,What material is the object made of?,The object is made of plastic.,material_identity
+cap,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+plastic_cup,What object is being touched?,The object being touched is a plastic cup.,object_identity
+banana,Does this rubber object feel hard when pressed?,"No, the rubber object feels soft.",hardness_material
+pencilbox,"Based on the tactile feedback, does this plastic object feel smooth?","Yes, the plastic object feels smooth.",roughness_material
+can_metal_hard_smooth_bottom,Is this object made of glass or metal?,This object is made of metal.,material_discrimination
+shampool_1,Is this object hard or soft?,The object is very hard.,hardness_binary
+woodcup3,"Based on the tactile feedback, does this wood object feel smooth?","Yes, the wood object feels smooth.",roughness_material
+bowl_metal_plastic_bottom,"Based on the tactile feedback, does this ceramic object feel smooth?","Yes, the ceramic object feels smooth.",roughness_material
+plastic_cup2,"Based on the tactile feedback, does this plastic object feel smooth?","Yes, the plastic object feels smooth.",roughness_material
+pill_bottle_hard_smooth_plastic_bottom_edge,What object is being touched?,The object being touched is a pill bottle.,object_identity
+onion,What texture can be observed on the surface?,"The surface has a glossy, slippery, smooth texture.",texture_tag
+glove,What object is being touched?,The object being touched is a Glove.,object_identity
+pencilbox2,What object is being touched?,The object being touched is a Pencil box.,object_identity
+paper,"Based on the tactile feedback, does this paper object feel smooth?","Yes, the paper object feels smooth.",roughness_material
+sponge_brush_handle_1,What material is used and how hard does it feel?,The object is made of rubber and feels hard.,material_hardness
+can_metal_hard_smooth_top,Is this object hard or soft?,The object is very hard.,hardness_binary
+galssbottel_net_pattern_hard_smooth_2,What material is used and how hard does it feel?,The object is made of glass and feels hard.,material_hardness
+plastic_yellow_duck_wing,What texture can be observed on the surface?,The surface has a smooth texture.,texture_tag
+bowl_metal_plastic_handle,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+orange,What material is the object made of?,The object is made of rubber.,material_identity
+3dprint,Is the surface of this object smooth or rough?,The surface is slightly rough.,roughness_binary
+vacuum_cup,Is this object hard or soft?,The object is very hard.,hardness_binary
+grape,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+tomato_medium_smooth_1,What material is the object made of?,The object is made of plastic.,material_identity
+spoon,What texture can be observed on the surface?,"The surface has a sleek, polished, smooth texture.",texture_tag
+bowl2,"Based on the tactile feedback, does this glass object feel smooth?","Yes, the glass object feels smooth.",roughness_material
+vacuum_cup_lid,Is this object made of metal or ceramic?,This object is made of metal.,material_discrimination
+galssbottel_net_pattern_hard_smooth_1,What are the roughness and hardness of this object?,The surface is smooth and the object feels very hard.,roughness_hardness
+paperbox,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+papercup,What material is the object made of?,The object is made of paper.,material_identity
+plastic_box,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+plastic_yellow_duck_wing,Does this plastic object feel hard when pressed?,"No, the plastic object feels soft.",hardness_material
+shampool_1,What material is the object made of?,The object is made of plastic.,material_identity
+coffeecup_plastic_smooth_hard_bottom_1,What material is used and how hard does it feel?,The object is made of plastic and feels medium hardness.,material_hardness
+orange2,Is this object made of plastic or rubber?,This object is made of rubber.,material_discrimination
+glove2,Is this object made of plastic or metal?,This object is made of plastic.,material_discrimination
+coffeecup_plastic_smooth_hard_bottom_edge,Is this object hard or soft?,The object is hard.,hardness_binary
+plastic_box_bottom_hard_smooth_1,Does this plastic object feel hard when pressed?,"Yes, the plastic object feels very hard.",hardness_material
+grape,What material is used and how hard does it feel?,The object is made of rubber and feels soft.,material_hardness
+galssbottel_net_pattern_hard_smooth_3,What material is used and how hard does it feel?,The object is made of glass and feels very hard.,material_hardness
+can_metal_hard_smooth_bottom,What texture can be observed on the surface?,"The surface has a reflective, shiny, smooth texture.",texture_tag
+pencilbox2,Is this object made of ceramic or plastic?,This object is made of plastic.,material_discrimination
+sponge_brush_s_sponge_soft_rough,What object is being touched?,The object being touched is a Sponge brush.,object_identity
+bowl3,What texture can be observed on the surface?,"The surface has a glossy, sleek, smooth texture.",texture_tag
+bowl_metal_plastic_bottom,What material is used and how hard does it feel?,The object is made of ceramic and feels hard.,material_hardness
+galssbottel_net_pattern_hard_smooth_3,What object is being touched?,The object being touched is a Glass bottle.,object_identity
+bowl_metal_plastic_handle,What are the roughness and hardness of this object?,The surface is smooth and the object feels medium hardness.,roughness_hardness
+bowl3,Does this plastic object feel hard when pressed?,"Yes, the plastic object feels hard.",hardness_material
+rubber_rabbittoy_hard_smooth_ear,What are the roughness and hardness of this object?,The surface is smooth and the object feels hard.,roughness_hardness
+sponge2,Does this rubber object feel hard when pressed?,"No, the rubber object feels soft.",hardness_material
+pencilbox2,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+rubber_soft_ball_rough,What material is the object made of?,The object is made of rubber.,material_identity
+3dprint,What material is used and how hard does it feel?,The object is made of rubber and feels soft.,material_hardness
+peach,Is this object hard or soft?,The object is soft.,hardness_binary
+rubber_toy2,Does this rubber object feel hard when pressed?,"Yes, the rubber object feels very hard.",hardness_material
+plastic_box_bottom_hard_smooth_edge,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+sponge2,What texture can be observed on the surface?,"The surface has a spongy, porous texture.",texture_tag
+shampool_2,What material is used and how hard does it feel?,The object is made of plastic and feels very hard.,material_hardness
+pencilbox,Is this object made of plastic or rubber?,This object is made of plastic.,material_discrimination
+paper,What object is being touched?,The object being touched is a envelope.,object_identity
+plastic_glove,Is this object hard or soft?,The object is soft.,hardness_binary
+sponge,What material is the object made of?,The object is made of rubber.,material_identity
+plush_toy2,What object is being touched?,The object being touched is a Plush toy.,object_identity
+galssbottel_net_pattern_hard_smooth_1,What object is being touched?,The object being touched is a Glass bottle.,object_identity
+plastic_glove,What object is being touched?,The object being touched is a plastic_glove.,object_identity
+orange2,What material is used and how hard does it feel?,The object is made of rubber and feels medium hardness.,material_hardness
+bowl_metal_plastic_handle,Is this object hard or soft?,"The object has medium hardness, neither distinctly hard nor soft.",hardness_binary
+plastic_cup3,"Based on the tactile feedback, does this plastic object feel smooth?","Yes, the plastic object feels smooth.",roughness_material
+papercup,Is this object made of rubber or paper?,This object is made of paper.,material_discrimination
+shuttlecock2,Is this object hard or soft?,The object is soft.,hardness_binary
+peach_hard_rough,Is this object hard or soft?,The object is soft.,hardness_binary
+glass_jar2,Is this object hard or soft?,The object is very hard.,hardness_binary
+bowl3,Is this object made of plastic or ceramic?,This object is made of plastic.,material_discrimination
+pill_bottle_hard_smooth_plastic_bottom_edge,Is this object made of plastic or wood?,This object is made of plastic.,material_discrimination
+plastic_yellow_duck_beak,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+paper_box_medium_smooth_2,What material is the object made of?,The object is made of paper.,material_identity
+3dprint,What texture can be observed on the surface?,"The surface has a matte, waxy, smooth texture.",texture_tag
+glass_jar2,"Based on the tactile feedback, does this glass object feel smooth?","Yes, the glass object feels smooth.",roughness_material
+sponge_brush_s_sponge_soft_rough,What texture can be observed on the surface?,The surface has a smooth texture.,texture_tag
+plastic_bottle,What material is the object made of?,The object is made of plastic.,material_identity
+paper_box_medium_smooth_2,What object is being touched?,The object being touched is a Matchbox.,object_identity
+sponge2,What are the roughness and hardness of this object?,The surface is slightly rough and the object feels soft.,roughness_hardness
+rubber_rabbittoy_hard_smooth,What are the roughness and hardness of this object?,The surface is smooth and the object feels medium hardness.,roughness_hardness
+rubber_soft_ball_rough,Is this object hard or soft?,The object is soft.,hardness_binary
+bowl_metal_plastic_handle,"Based on the tactile feedback, does this metal object feel smooth?","Yes, the metal object feels smooth.",roughness_material
+metalbox2,What are the roughness and hardness of this object?,The surface is smooth and the object feels very hard.,roughness_hardness
+woodcup3,Is this object hard or soft?,The object is very hard.,hardness_binary
+galssbottel_net_pattern_hard_smooth,"Based on the tactile feedback, does this glass object feel smooth?","Yes, the glass object feels smooth.",roughness_material
+tomato,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+glove2,What material is the object made of?,The object is made of plastic.,material_identity
+rubber_soft_ball_rough,Is the surface of this object smooth or rough?,The surface is slightly rough.,roughness_binary
+coffeecup_plastic_smooth_hard_bottom_1,What texture can be observed on the surface?,The surface has a smooth texture.,texture_tag
+galssbottel_net_pattern_hard_smooth_2,What are the roughness and hardness of this object?,The surface is smooth and the object feels hard.,roughness_hardness
+iron_red_metal_box,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+papercup2,What texture can be observed on the surface?,The surface has a smooth texture.,texture_tag
+pill_bottle_hard_smooth_plastic_bottom_edge,"Based on the tactile feedback, does this plastic object feel smooth?","Yes, the plastic object feels smooth.",roughness_material
+cap,"Based on the tactile feedback, does this plastic object feel smooth?","Yes, the plastic object feels smooth.",roughness_material
+rubber_rabbittoy_hard_smooth_ear,What material is the object made of?,The object is made of rubber.,material_identity
+onion,What material is the object made of?,The object is made of plastic.,material_identity
+bowl,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+plastic_yellow_duck_beak,What material is the object made of?,The object is made of plastic.,material_identity
+vacuum_cup,What object is being touched?,The object being touched is a Vacuum cup.,object_identity
+plastic_box_bottom_hard_smooth,Is this object hard or soft?,The object is hard.,hardness_binary
+pill_bottle_hard_smooth_plastic_cap,What material is used and how hard does it feel?,The object is made of plastic and feels very hard.,material_hardness
+galssbottel_net_pattern_hard_smooth_1,Is this object made of metal or ceramic?,This object is made of metal.,material_discrimination
+pill_bottle_hard_smooth_plastic_bottom_edge,What texture can be observed on the surface?,"The surface has a glossy, slippery, smooth texture.",texture_tag
+bowl_metal_plastic_edge,Is this object made of metal or ceramic?,This object is made of metal.,material_discrimination
+mouse_for_computer_1,Is this object hard or soft?,The object is very hard.,hardness_binary
+galssbottel_net_pattern_hard_smooth,What object is being touched?,The object being touched is a Glass bottle.,object_identity
+rubber_soft_ball_rough,What texture can be observed on the surface?,The surface has a glossy texture.,texture_tag
+glass_jar,What texture can be observed on the surface?,"The surface has a slick, flat, smooth texture.",texture_tag
+plastic_box_bottom_hard_smooth,Does this plastic object feel hard when pressed?,"Yes, the plastic object feels hard.",hardness_material
+glass_jar2,What object is being touched?,The object being touched is a Glass jar.,object_identity
+coffeecup_plastic_smooth_hard_bottom,What object is being touched?,The object being touched is a Coffeecup.,object_identity
+bowl,Is this object made of metal or ceramic?,This object is made of ceramic.,material_discrimination
+papercup,"Based on the tactile feedback, does this paper object feel smooth?","No, the paper object feels rough.",roughness_material
+tomato,Is this object made of rubber or plastic?,This object is made of plastic.,material_discrimination
+can_metal_hard_smooth_top,What material is the object made of?,The object is made of metal.,material_identity
+peach,What are the roughness and hardness of this object?,The surface is slightly rough and the object feels soft.,roughness_hardness
+paperbox2,What material is used and how hard does it feel?,The object is made of paper and feels soft.,material_hardness
+paperbag2,What object is being touched?,The object being touched is a Paperbag.,object_identity
+cap,Is this object hard or soft?,The object is soft.,hardness_binary
+woodcup2,What are the roughness and hardness of this object?,The surface is smooth and the object feels hard.,roughness_hardness
+vacuum_cup_lid,What material is used and how hard does it feel?,The object is made of metal and feels very hard.,material_hardness
+iron_red_metal_box,What material is the object made of?,The object is made of metal.,material_identity
+sponge_brush_s_sponge_soft_rough,Is this object hard or soft?,The object is soft.,hardness_binary
+rubber_toy2,Is the surface of this object smooth or rough?,The surface is slightly rough.,roughness_binary
+pencilbox,What material is the object made of?,The object is made of plastic.,material_identity
+sponge_brush_handle_1,Is this object made of plastic or rubber?,This object is made of rubber.,material_discrimination
+cap,What object is being touched?,The object being touched is a cap.,object_identity
+vacuum_cup_lid,What texture can be observed on the surface?,"The surface has a sleek, reflective texture.",texture_tag
+cupshell_inside_smooth_hard,Is this object made of ceramic or plastic?,This object is made of plastic.,material_discrimination
+sponge2,Is the surface of this object smooth or rough?,The surface is slightly rough.,roughness_binary
+rubber_toy,"Based on the tactile feedback, does this rubber object feel smooth?","Yes, the rubber object feels smooth.",roughness_material
+can_metal_hard_smooth_bottom,What material is used and how hard does it feel?,The object is made of metal and feels very hard.,material_hardness
+paperbox,What material is the object made of?,The object is made of paper.,material_identity
+glove2,Is the surface of this object smooth or rough?,The surface is slightly rough.,roughness_binary
+rubber_rabbittoy_hard_smooth_ear,Is this object hard or soft?,The object is hard.,hardness_binary
+pencilbox2,Is this object hard or soft?,The object is hard.,hardness_binary
+tomato_medium_smooth_1,Is this object hard or soft?,The object is soft.,hardness_binary
+sponge_brush_handle,What are the roughness and hardness of this object?,The surface is smooth and the object feels very hard.,roughness_hardness
+shampool_2,What material is the object made of?,The object is made of plastic.,material_identity
+rubber_toy3,"Based on the tactile feedback, does this rubber object feel smooth?","Yes, the rubber object feels smooth.",roughness_material
+sponge,Is this object made of plastic or rubber?,This object is made of rubber.,material_discrimination
+paper_box_medium_smooth,What are the roughness and hardness of this object?,The surface is smooth and the object feels soft.,roughness_hardness
+shuttlecock,What are the roughness and hardness of this object?,The surface is slightly rough and the object feels soft.,roughness_hardness
+plastic_box2,Is this object made of ceramic or plastic?,This object is made of plastic.,material_discrimination
+galssbottel_net_pattern_hard_smooth_3,What material is the object made of?,The object is made of glass.,material_identity
+metalbox2,What material is the object made of?,The object is made of metal.,material_identity
+3dprint,Is this object made of plastic or rubber?,This object is made of rubber.,material_discrimination
+metalbox,What object is being touched?,The object being touched is a Metalbox.,object_identity
+can_metal_hard_smooth_top,What material is used and how hard does it feel?,The object is made of metal and feels very hard.,material_hardness
+glass_jar,What object is being touched?,The object being touched is a Glass jar.,object_identity
+mouse_for_computer_1,Is this object made of rubber or plastic?,This object is made of plastic.,material_discrimination
+tomato_leaf_soft_rough_2,Does this rubber object feel hard when pressed?,"No, the rubber object feels soft.",hardness_material
+coffeecup_plastic_smooth_hard_bottom_edge,What material is used and how hard does it feel?,The object is made of paper and feels hard.,material_hardness
+paperbag2,"Based on the tactile feedback, does this paper object feel smooth?","Yes, the paper object feels smooth.",roughness_material
+paperbox,What object is being touched?,The object being touched is a Paperbox.,object_identity
+shuttlecock,Is this object made of unknown or rubber?,This object is made of unknown.,material_discrimination
+cd,What object is being touched?,The object being touched is a CD.,object_identity
+galssbottel_net_pattern_hard_smooth,Is this object made of glass or ceramic?,This object is made of glass.,material_discrimination
+tomato,What object is being touched?,The object being touched is a Tomato.,object_identity
+spoon,What material is the object made of?,The object is made of metal.,material_identity
+bowl2,Is this object hard or soft?,The object is very hard.,hardness_binary
+3dprint2,Is this object hard or soft?,"The object has medium hardness, neither distinctly hard nor soft.",hardness_binary
+plastic_bottle2,Does this plastic object feel hard when pressed?,"Yes, the plastic object feels very hard.",hardness_material
+peach_hard_rough,What material is used and how hard does it feel?,The object is made of rubber and feels soft.,material_hardness
+rubber_rabbittoy_hard_smooth_1,"Based on the tactile feedback, does this rubber object feel smooth?","Yes, the rubber object feels smooth.",roughness_material
+vacuum_cup_lid,What material is the object made of?,The object is made of metal.,material_identity
+rubber_toy2,"Based on the tactile feedback, does this rubber object feel smooth?","No, the rubber object feels slightly rough.",roughness_material
+pencilbox,What texture can be observed on the surface?,"The surface has a glossy, smooth texture.",texture_tag
+tomato,What are the roughness and hardness of this object?,The surface is smooth and the object feels soft.,roughness_hardness
+rubber_toy,What material is used and how hard does it feel?,The object is made of rubber and feels very hard.,material_hardness
+plastic_cup2,What are the roughness and hardness of this object?,The surface is smooth and the object feels very hard.,roughness_hardness
+paper,Is this object hard or soft?,The object is soft.,hardness_binary
+glass_jar2,What are the roughness and hardness of this object?,The surface is smooth and the object feels very hard.,roughness_hardness
+tomato_medium_smooth_1,Does this plastic object feel hard when pressed?,"No, the plastic object feels soft.",hardness_material
+galssbottel_net_pattern_hard_smooth_1,Is this object hard or soft?,The object is very hard.,hardness_binary
+paper_box_medium_smooth_2,Is this object hard or soft?,The object is soft.,hardness_binary
+grape,Is this object hard or soft?,The object is soft.,hardness_binary
+cd2,What are the roughness and hardness of this object?,The surface is smooth and the object feels very hard.,roughness_hardness
+onion,"Based on the tactile feedback, does this plastic object feel smooth?","Yes, the plastic object feels smooth.",roughness_material
+can_metal_hard_smooth,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+paper_box_medium_smooth,What material is the object made of?,The object is made of paper.,material_identity
+peach_hard_rough,"Based on the tactile feedback, does this rubber object feel smooth?","No, the rubber object feels slightly rough.",roughness_material
+shuttlecock,What object is being touched?,The object being touched is a shuttlecock.,object_identity
+coffeecup_plastic_smooth_hard_bottom,Does this plastic object feel hard when pressed?,"Yes, the plastic object feels hard.",hardness_material
+galssbottel_net_pattern_hard_smooth_1,"Based on the tactile feedback, does this metal object feel smooth?","Yes, the metal object feels smooth.",roughness_material
+bowl_metal_plastic_bottom,What material is the object made of?,The object is made of ceramic.,material_identity
+tomato_leaf_soft_rough_2,Is the surface of this object smooth or rough?,The surface is slightly rough.,roughness_binary
+plastic_cup,What texture can be observed on the surface?,"The surface has a shiny, smooth texture.",texture_tag
+orange,What are the roughness and hardness of this object?,The surface is slightly rough and the object feels hard.,roughness_hardness
+sponge_brush_handle,"Based on the tactile feedback, does this plastic object feel smooth?","Yes, the plastic object feels smooth.",roughness_material
+mouse_for_computer_1,"Based on the tactile feedback, does this plastic object feel smooth?","Yes, the plastic object feels smooth.",roughness_material
+glass_jar,Is this object made of plastic or glass?,This object is made of glass.,material_discrimination
+bowl3,What object is being touched?,The object being touched is a bowl.,object_identity
+rubber_rabbittoy_hard_smooth,What material is used and how hard does it feel?,The object is made of rubber and feels medium hardness.,material_hardness
+rubber_rabbittoy_hard_smooth_1,Does this rubber object feel hard when pressed?,"Yes, the rubber object feels hard.",hardness_material
+rubber_soft_ball_rough,What are the roughness and hardness of this object?,The surface is slightly rough and the object feels soft.,roughness_hardness
+vacuum_cup_lid,Is this object hard or soft?,The object is very hard.,hardness_binary
+sponge_brush_handle,Is this object hard or soft?,The object is very hard.,hardness_binary
+tomato_leaf_soft_rough_2,Is this object hard or soft?,The object is soft.,hardness_binary
+paperbag,What object is being touched?,The object being touched is a Paperbag.,object_identity
+mouse_for_computer_scroll,Is this object made of plastic or glass?,This object is made of plastic.,material_discrimination
+onion,Is this object hard or soft?,The object is hard.,hardness_binary
+orange3,Is the surface of this object smooth or rough?,The surface is rough.,roughness_binary
+onion2,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+rubber_rabbittoy_hard_smooth_ear,Is this object made of ceramic or rubber?,This object is made of rubber.,material_discrimination
+bowl2,What texture can be observed on the surface?,"The surface has a glossy, sleek, even texture.",texture_tag
+bowl2,Does this glass object feel hard when pressed?,"Yes, the glass object feels very hard.",hardness_material
+coffeecup_plastic_smooth_hard_bottom,"Based on the tactile feedback, does this plastic object feel smooth?","Yes, the plastic object feels smooth.",roughness_material
+mouse_for_computer_1,What material is used and how hard does it feel?,The object is made of plastic and feels very hard.,material_hardness
+plastic_cup2,Does this plastic object feel hard when pressed?,"Yes, the plastic object feels very hard.",hardness_material
+shuttlecock2,What object is being touched?,The object being touched is a shuttlecock2.,object_identity
+plastic_box2,Is the surface of this object smooth or rough?,The surface is smooth.,roughness_binary
+galssbottel_net_pattern_hard_smooth,What material is used and how hard does it feel?,The object is made of glass and feels very hard.,material_hardness
+paperbag,Does this paper object feel hard when pressed?,"No, the paper object feels soft.",hardness_material
+pill_bottle_hard_smooth_plastic_cap,Does this plastic object feel hard when pressed?,"Yes, the plastic object feels very hard.",hardness_material
+pill_bottle_hard_smooth_plastic_cap,What object is being touched?,The object being touched is a pill bottle.,object_identity
+woodcup,"Based on the tactile feedback, does this wood object feel smooth?","Yes, the wood object feels smooth.",roughness_material
+rubber_toy3,What texture can be observed on the surface?,The surface has a smooth texture.,texture_tag
+glove2,What material is used and how hard does it feel?,The object is made of plastic and feels medium hardness.,material_hardness

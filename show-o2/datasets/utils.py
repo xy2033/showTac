@@ -247,6 +247,97 @@ def format_sequence_tactile_gen(
     return text_tokens, text_labels, modality_positions, text_mask, image_mask
 
 
+def format_sequence_tactile_qa(
+        question_tokens,
+        answer_tokens,
+        bos_id,
+        eos_id,
+        bov_id,
+        eov_id,
+        pad_id,
+        vid_pad_id,
+        num_visual_tokens,
+        num_tactile_tokens,
+        max_seq_len,
+):
+    """Build a QA-formatted sequence for tactile NTP training.
+
+    Sequence:
+        [BOS] {question_chat_tokens} [BOV] {visual_pads} [EOV] [BOV] {tactile_pads} [EOV] {answer_tokens} [EOS] [PAD]...
+
+    Label policy:
+        - question section (BOS + chat + special tokens + video pads): label = -100 (ignored)
+        - answer section (answer tokens + EOS): label = actual token IDs (NTP supervision)
+
+    Returns:
+        text_tokens:     Tensor of token IDs padded to max_seq_len.
+        text_labels:     Tensor with -100 for question/video sections, valid IDs for answer.
+        modality_positions: Tensor of shape (2, 2) with (offset, length) for each video segment.
+        text_mask:       Bool tensor, 1 where position is a non-pad, non-vid-pad token.
+        image_mask:      Bool tensor, 1 where position is a video pad token.
+    """
+    # Build token sequence
+    # fmt: off
+    question_len = len(question_tokens)
+    answer_len = len(answer_tokens)
+
+    # Visual offset: BOS(1) + question_tokens + BOV(1) = question_len + 2
+    visual_offset = question_len + 2
+
+    # Tactile offset: visual_offset + vis_tokens + EOV(1) + BOV(1)
+    tactile_offset = visual_offset + num_visual_tokens + 2
+
+    token_sequence = (
+        [bos_id]
+        + question_tokens
+        + [bov_id] + [vid_pad_id] * num_visual_tokens + [eov_id]
+        + [bov_id] + [vid_pad_id] * num_tactile_tokens + [eov_id]
+        + answer_tokens
+        + [eos_id]
+    )
+    # fmt: on
+
+    # Label: question section (including bos + chat + special + video pads) = -100
+    #        answer section (answer tokens + EOS) = valid token IDs
+    question_section_len = (
+        1                                   # BOS
+        + question_len                      # chat tokens
+        + 1 + num_visual_tokens + 1         # BOV + visual pads + EOV
+        + 1 + num_tactile_tokens + 1        # BOV + tactile pads + EOV
+    )
+
+    total_non_pad = len(token_sequence)
+    labels = (
+        [-100] * question_section_len
+        + answer_tokens                     # valid answer token IDs
+        + [eos_id]                          # valid EOS
+    )
+    num_pad = max_seq_len - total_non_pad
+    token_sequence = token_sequence + [pad_id] * num_pad
+    labels = labels + [-100] * num_pad
+
+    modality_positions = torch.tensor([
+        [visual_offset, num_visual_tokens],
+        [tactile_offset, num_tactile_tokens],
+    ])
+
+    text_tokens = torch.tensor(token_sequence, dtype=torch.long)
+    text_labels = torch.tensor(labels, dtype=torch.long)
+
+    text_mask = torch.where(
+        (text_tokens != vid_pad_id) & (text_tokens != pad_id),
+        torch.ones_like(text_tokens),
+        torch.zeros_like(text_tokens),
+    )
+    image_mask = torch.where(
+        text_tokens == vid_pad_id,
+        torch.ones_like(text_tokens),
+        torch.zeros_like(text_tokens),
+    )
+
+    return text_tokens, text_labels, modality_positions, text_mask, image_mask
+
+
 def resize_crop(image, image_height, image_width):
     aspect_ratio = image_width / image_height
     if isinstance(image, torch.Tensor) and image.ndim == 4:

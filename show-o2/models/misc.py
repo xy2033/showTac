@@ -9,11 +9,17 @@ from transformers import AutoTokenizer
 
 
 def next_token_prediction(logits, labels, vocab_szie):
-    shifted_labels = labels[:, 1:].contiguous().view(-1)
-    if not (shifted_labels != -100).any():
+    shifted_logits = logits[:, :-1]
+    shifted_labels = labels[:, 1:]
+    valid_mask = shifted_labels != -100
+    if not valid_mask.any():
         return logits.sum() * 0.0
-    return F.cross_entropy(logits[:, :-1].contiguous().view(-1, vocab_szie), shifted_labels,
-                           ignore_index=-100)
+
+    # Most tactile QA positions are ignored. Selecting only answer tokens avoids
+    # allocating a full [batch * seq_len, vocab] CE buffer for thousands of -100 labels.
+    valid_logits = shifted_logits[valid_mask].contiguous().view(-1, vocab_szie)
+    valid_labels = shifted_labels[valid_mask].contiguous().view(-1)
+    return F.cross_entropy(valid_logits, valid_labels)
 
 
 def velocity_prediction(latents, labels, mask=None, loss_weight=None):

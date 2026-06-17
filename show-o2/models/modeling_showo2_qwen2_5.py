@@ -149,6 +149,18 @@ class Showo2Qwen2_5(ModelMixin, ConfigMixin):
         nn.init.constant_(self.tactile_force_head[-1].weight, 0)
         nn.init.constant_(self.tactile_force_head[-1].bias, 0)
 
+    def selective_next_token_prediction(self, hidden_states, labels):
+        shifted_hidden_states = hidden_states[:, :-1, :]
+        shifted_labels = labels[:, 1:]
+        valid_mask = shifted_labels != -100
+        if not valid_mask.any():
+            return hidden_states.sum() * 0.0, None
+
+        valid_hidden_states = shifted_hidden_states[valid_mask]
+        valid_labels = shifted_labels[valid_mask]
+        valid_logits = self.showo.lm_head(valid_hidden_states)
+        return F.cross_entropy(valid_logits, valid_labels), valid_logits
+
     def unpatchify(self, x, h, w, T=0):
         """
         x: (N, T, patch_size**2 * C)
@@ -383,14 +395,21 @@ class Showo2Qwen2_5(ModelMixin, ConfigMixin):
                             new_image_labels[i, offset:offset + length] = image_labels[
                                                                           i * modality_positions.size(1) + j, :length]
 
-            outputs = self.showo(
+            outputs = self.showo.model(
                 inputs_embeds=input_embeds,
                 attention_mask=attention_mask,
                 # position_ids=position_ids,
-                output_hidden_states=output_hidden_states
+                output_hidden_states=False,
+                return_dict=True,
             )
 
-            logits, last_hidden_states = outputs['logits'], outputs['hidden_states'][-1]
+            last_hidden_states = outputs.last_hidden_state
+            logits = None
+
+            qwen_hidden_states = last_hidden_states
+            if text_labels is not None and image_labels is None and virtual_force_targets is None:
+                loss_ntp, logits = self.selective_next_token_prediction(qwen_hidden_states, text_labels)
+                return logits, loss_ntp
 
             # diffusion head to predict vector fields
             if hasattr(self, 'diff_proj'):
@@ -434,7 +453,7 @@ class Showo2Qwen2_5(ModelMixin, ConfigMixin):
 
             # [:v_pred.shape[0]] is the valid image labels (special case for interleaved data training)
             if text_labels is not None and image_labels is not None:
-                loss_ntp = next_token_prediction(logits, text_labels, self.config.llm_vocab_size)
+                loss_ntp, logits = self.selective_next_token_prediction(qwen_hidden_states, text_labels)
                 loss_flow = velocity_prediction(
                     v_pred,
                     new_image_labels[:v_pred.shape[0]],
@@ -457,7 +476,7 @@ class Showo2Qwen2_5(ModelMixin, ConfigMixin):
                 return logits, loss_flow
 
             elif text_labels is not None:
-                loss_ntp = next_token_prediction(logits, text_labels, self.config.llm_vocab_size)
+                loss_ntp, logits = self.selective_next_token_prediction(qwen_hidden_states, text_labels)
                 return logits, loss_ntp
 
             else:

@@ -4,3 +4,4 @@ from .imagenet_dataset import create_imagenet_dataloader
 from .mmu_dataset import MMUDataset
 from .vist_dataset import VISTDataset
 from .tactile_visual_dataset import TactileVisualDataset
+from .tactile_qa_dataset import TactileQADataset
