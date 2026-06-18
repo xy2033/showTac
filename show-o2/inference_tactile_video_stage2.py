@@ -34,9 +34,10 @@
 # =============================================================================
 
 import argparse
+import glob
 import json
 import os
-import sys
+import random
 from contextlib import nullcontext
 
 import numpy as np
@@ -48,7 +49,7 @@ from datasets import TactileVisualDataset
 from datasets.tactile_qa_dataset import TactileQADataset
 from datasets.utils import format_sequence_tactile_gen, format_sequence_tactile_qa
 from models import Showo2Qwen2_5, WanVAE, omni_attn_mask_naive
-from models.misc import get_text_tokenizer
+from models.misc import get_text_tokenizer, interpolate_pos_encoding
 from utils import path_to_llm_name, denorm_vid
 from transport import Sampler, create_transport
 
@@ -90,11 +91,102 @@ def resolve_checkpoint_dir(checkpoint_path):
     return checkpoint_path
 
 
-def load_checkpoint_state_dict(weight_file):
+def resolve_weight_file(model_path):
+    if os.path.isdir(model_path):
+        candidate_dirs = [model_path]
+        unwrapped_dir = os.path.join(model_path, "unwrapped_model")
+        if os.path.isdir(unwrapped_dir):
+            candidate_dirs.append(unwrapped_dir)
+        if os.path.basename(os.path.normpath(model_path)) == "unwrapped_model":
+            parent_dir = os.path.dirname(os.path.normpath(model_path))
+            if os.path.isdir(parent_dir):
+                candidate_dirs.append(parent_dir)
+
+        # Prefer single-file checkpoints, then fall back to sharded index files
+        # (save_pretrained shards once the state dict exceeds max_shard_size).
+        known_weight_names = (
+            "pytorch_model.bin",
+            "model.safetensors",
+            "pytorch_model.bin.index.json",
+            "model.safetensors.index.json",
+            "diffusion_pytorch_model.bin.index.json",
+            "diffusion_pytorch_model.safetensors.index.json",
+        )
+        for candidate_dir in candidate_dirs:
+            for filename in known_weight_names:
+                weight_file = os.path.join(candidate_dir, filename)
+                if os.path.exists(weight_file):
+                    return weight_file
+
+        # Some checkpoints are saved with variants or custom prefixes, e.g.
+        # model.fp16.safetensors.index.json or pytorch_model-00001-of-00002.bin.
+        # Discover those instead of treating a valid sharded checkpoint as empty.
+        for candidate_dir in candidate_dirs:
+            for index_file in sorted(glob.glob(os.path.join(candidate_dir, "*.index.json"))):
+                try:
+                    with open(index_file, "r", encoding="utf-8") as f:
+                        if "weight_map" in json.load(f):
+                            return index_file
+                except (OSError, json.JSONDecodeError):
+                    continue
+
+        shard_patterns = (
+            "*-*-of-*.safetensors",
+            "*-*-of-*.bin",
+            "*.safetensors",
+            "*.bin",
+        )
+        for candidate_dir in candidate_dirs:
+            for pattern in shard_patterns:
+                shard_files = sorted(glob.glob(os.path.join(candidate_dir, pattern)))
+                if shard_files:
+                    return shard_files[0]
+    elif os.path.exists(model_path):
+        return model_path
+    return None
+
+
+def describe_checkpoint_dir(model_path):
+    if not os.path.isdir(model_path):
+        return f"{model_path} is not a directory"
+    entries = sorted(os.listdir(model_path))
+    preview = ", ".join(entries[:30])
+    if len(entries) > 30:
+        preview += f", ... ({len(entries)} files total)"
+    return preview
+
+
+def load_single_weight_file(weight_file):
     if weight_file.endswith(".safetensors"):
         from safetensors.torch import load_file
         return load_file(weight_file, device="cpu")
     return torch.load(weight_file, map_location="cpu")
+
+
+def load_checkpoint_state_dict(weight_file):
+    # Sharded checkpoint: merge every shard listed in the index's weight_map.
+    if weight_file.endswith(".index.json"):
+        shard_dir = os.path.dirname(weight_file)
+        with open(weight_file, "r", encoding="utf-8") as index_file:
+            index = json.load(index_file)
+        merged = {}
+        for shard_name in sorted(set(index["weight_map"].values())):
+            merged.update(load_single_weight_file(os.path.join(shard_dir, shard_name)))
+        return merged
+
+    # Fallback for directories where only shard files are present and no index
+    # was found. This path is entered only once from the first shard.
+    basename = os.path.basename(weight_file)
+    if "-00001-of-" in basename:
+        shard_prefix = basename.split("-00001-of-")[0]
+        shard_match = sorted(glob.glob(os.path.join(os.path.dirname(weight_file), shard_prefix + "-*-of-*")))
+        if len(shard_match) > 1:
+            merged = {}
+            for shard_name in shard_match:
+                merged.update(load_single_weight_file(shard_name))
+            return merged
+
+    return load_single_weight_file(weight_file)
 
 
 def load_model(args, device, weight_type):
@@ -104,11 +196,18 @@ def load_model(args, device, weight_type):
         llm_name=path_to_llm_name[args.llm_path],
     )
 
-    # Load base Show-o2 architecture
-    if args.showo_path and os.path.isdir(args.showo_path):
-        print(f"Loading base Show-o2 from {args.showo_path}...")
-        model = Showo2Qwen2_5.from_pretrained(args.showo_path, use_safetensors=False).to(device)
+    stage2_dir = resolve_checkpoint_dir(args.stage2_checkpoint)
+
+    # Do not call from_pretrained() here: the saved config may contain HF Hub
+    # repo ids such as Qwen/Qwen2.5-1.5B-Instruct, which fail on offline clusters.
+    # Build the architecture with CLI-provided local paths, then load weights.
+    config_path = os.path.join(stage2_dir, "config.json")
+    if os.path.exists(config_path):
+        print(f"Loading Stage 2 config from {config_path}...")
+        with open(config_path, "r", encoding="utf-8") as config_file:
+            cfg = json.load(config_file)
     else:
+        print(f"[WARN] config.json not found in {stage2_dir}; using default 1.5B tactile config.")
         cfg = dict(
             model_name="Showo2", llm_model_path=args.llm_path,
             hidden_size=1536, image_latent_dim=16,
@@ -116,18 +215,44 @@ def load_model(args, device, weight_type):
             patch_size=2, num_diffusion_layers=10, clip_latent_dim=1152,
             add_qk_norm=True, add_time_embeds=True,
         )
-        model = Showo2Qwen2_5(**cfg).to(device)
+
+    cfg["llm_model_path"] = args.llm_path
+    cfg["llm_vocab_size"] = len(text_tokenizer)
+    cfg["load_from_showo"] = True
+    if not os.path.isdir(args.llm_path):
+        print(f"  [WARN] --llm_path '{args.llm_path}' does not exist or is not a directory")
+
+    if args.siglip_path:
+        cfg["clip_pretrained_model_path"] = args.siglip_path
+    else:
+        old_siglip_path = cfg.get("clip_pretrained_model_path")
+        if not old_siglip_path or not os.path.isdir(old_siglip_path):
+            raise ValueError(
+                f"Config contains clip_pretrained_model_path='{old_siglip_path}', "
+                "which is not available locally. Pass --siglip_path with the local "
+                "SigLIP directory, e.g. --siglip_path /defaultShare/models/siglip-so400m-patch14-384"
+            )
+
+    print(f"Building Show-o2 with local LLM path: {args.llm_path}")
+    model = Showo2Qwen2_5(**cfg).to(device)
+
+    if args.showo_path:
+        base_weight_file = resolve_weight_file(args.showo_path)
+        if base_weight_file is None:
+            raise FileNotFoundError(f"Base Show-o2 weights not found in --showo_path={args.showo_path}")
+        print(f"Loading base Show-o2 weights from {base_weight_file}...")
+        base_state_dict = load_checkpoint_state_dict(base_weight_file)
+        base_missing, base_unexpected = model.load_state_dict(base_state_dict, strict=False)
+        print(f"  Base Missing: {len(base_missing)}, Unexpected: {len(base_unexpected)}")
+        del base_state_dict
 
     # Load Stage 2 fine-tuned weights
-    stage2_dir = resolve_checkpoint_dir(args.stage2_checkpoint)
-    weight_file = None
-    for fname in ("pytorch_model.bin", "model.safetensors"):
-        candidate = os.path.join(stage2_dir, fname)
-        if os.path.exists(candidate):
-            weight_file = candidate
-            break
+    weight_file = resolve_weight_file(stage2_dir)
     if weight_file is None:
-        raise FileNotFoundError(f"No weights found in {stage2_dir}")
+        raise FileNotFoundError(
+            f"No weights found in {stage2_dir}. "
+            f"Directory contents: {describe_checkpoint_dir(stage2_dir)}"
+        )
 
     print(f"Loading Stage 2 weights from {weight_file}...")
     state_dict = load_checkpoint_state_dict(weight_file)
@@ -142,29 +267,62 @@ def load_model(args, device, weight_type):
     # VAE
     vae_model = WanVAE(vae_pth=args.vae_path, dtype=weight_type, device=device)
 
-    # Flow matching sampler
-    from omegaconf import OmegaConf
-    transport_config = OmegaConf.create(dict(
-        path_type="Linear", prediction="velocity", loss_weight=None,
-        train_eps=None, sample_eps=None, snr_type="lognorm",
-        sampling_method=args.sampling_method,
-        num_inference_steps=args.num_inference_steps,
-        atol=args.atol, rtol=args.rtol, reverse=args.reverse,
-        do_shift=True, time_shifting_factor=args.time_shifting_factor,
-    ))
+    return model, vae_model, text_tokenizer, showo_token_ids
+
+
+def decode_tactile_latents(vae_model, latents):
+    frames = vae_model.batch_decode(latents)
+    frames = frames.squeeze(0)
+    return rearrange(frames, 'c t h w -> t c h w')
+
+
+def encode_video_latents(vae_model, frames, device, weight_type, deterministic=False):
+    video = frames.to(device=device, dtype=weight_type)
+    video = rearrange(video, 't c h w -> 1 c t h w')
+    return vae_model.sample(video, deterministic=deterministic)
+
+
+def resolve_latent_token_layout(model, image_latents):
+    if image_latents.dim() != 5:
+        raise ValueError(f"Expected 5D VAE latents, got shape={tuple(image_latents.shape)}")
+
+    _, _, latent_frames, latent_h, latent_w = image_latents.shape
+    patch_size = int(getattr(model.config, "patch_size", 2))
+    latent_tokens = latent_frames * (latent_h // patch_size) * (latent_w // patch_size)
+    add_time_token = bool(getattr(model.config, "add_time_embeds", False))
+    segment_tokens = latent_tokens + int(add_time_token)
+    max_text_len = DEFAULT_SEQ_LEN - 2 * segment_tokens - 6
+    if max_text_len <= 0:
+        raise ValueError(
+            f"Sequence is too short for latent layout: "
+            f"max_seq_len={DEFAULT_SEQ_LEN}, segment_tokens={segment_tokens}"
+        )
+    return latent_tokens, segment_tokens, max_text_len, add_time_token
+
+
+def build_sampler_for_segment(
+        segment_tokens, sampling_method, num_inference_steps, atol, rtol,
+        reverse, time_shifting_factor,
+):
     transport = create_transport(
-        path_type=transport_config.path_type,
-        prediction=transport_config.prediction,
-        loss_weight=transport_config.loss_weight,
-        train_eps=transport_config.train_eps,
-        sample_eps=transport_config.sample_eps,
-        snr_type=transport_config.snr_type,
-        do_shift=transport_config.do_shift,
-        seq_len=DEFAULT_TOKENS_PER_FRAME * args.num_frames,
+        path_type="Linear",
+        prediction="velocity",
+        loss_weight=None,
+        train_eps=None,
+        sample_eps=None,
+        snr_type="lognorm",
+        do_shift=True,
+        seq_len=segment_tokens,
     )
     sampler = Sampler(transport)
-
-    return model, vae_model, text_tokenizer, showo_token_ids, sampler
+    return sampler.sample_ode(
+        sampling_method=sampling_method,
+        num_steps=num_inference_steps,
+        atol=atol,
+        rtol=rtol,
+        reverse=reverse,
+        time_shifting_factor=time_shifting_factor,
+    )
 
 
 def prepare_gen_batch(prompts, text_tokenizer, showo_token_ids, num_visual_tokens, num_tactile_tokens, max_text_len, device):
@@ -202,7 +360,7 @@ def prepare_qa_batch(question, text_tokenizer, showo_token_ids, num_visual_token
     # Empty answer placeholder for generation
     answer_ids = text_tokenizer("", add_special_tokens=False).input_ids
 
-    tokens, labels, positions, text_mask, image_mask = format_sequence_tactile_qa(
+    tokens, _, positions, _, _ = format_sequence_tactile_qa(
         question_tokens=question_ids, answer_tokens=answer_ids,
         bos_id=showo_token_ids["bos_id"], eos_id=showo_token_ids["eos_id"],
         bov_id=showo_token_ids["bov_id"], eov_id=showo_token_ids["eov_id"],
@@ -210,23 +368,24 @@ def prepare_qa_batch(question, text_tokenizer, showo_token_ids, num_visual_token
         num_visual_tokens=num_visual_tokens, num_tactile_tokens=num_tactile_tokens,
         max_seq_len=DEFAULT_SEQ_LEN,
     )
-    return tokens.unsqueeze(0).to(device), positions.unsqueeze(0).to(device), text_mask.unsqueeze(0).to(device), image_mask.unsqueeze(0).to(device)
+    return tokens.unsqueeze(0).to(device), positions.unsqueeze(0).to(device)
 
 
 @torch.no_grad()
-def generate_tactile_video(model, vae_model, text_tokenizer, showo_token_ids, sampler,
-                           text_prompt, visual_video_frames, num_frames, guidance_scale,
-                           device, weight_type, num_visual_tokens, num_tactile_tokens,
-                           max_text_len, sampling_method, num_inference_steps, atol, rtol,
+def generate_tactile_video(model, vae_model, text_tokenizer, showo_token_ids,
+                           text_prompt, visual_video_frames, guidance_scale,
+                           device, weight_type, sampling_method, num_inference_steps, atol, rtol,
                            reverse, time_shifting_factor, vae_deterministic=False):
     """Generate tactile video from text + visual condition (pure generation mode)."""
-    # Encode visual video
-    visual_input = visual_video_frames.unsqueeze(0).to(device=device, dtype=weight_type)
-    visual_latent = vae_model.sample(visual_input)
+    visual_latent = encode_video_latents(
+        vae_model, visual_video_frames, device, weight_type,
+        deterministic=vae_deterministic,
+    )
+    _, segment_tokens, max_text_len, _ = resolve_latent_token_layout(model, visual_latent)
 
     batch_tokens, batch_tokens_null, batch_pos, batch_pos_null = prepare_gen_batch(
         [text_prompt], text_tokenizer, showo_token_ids,
-        num_visual_tokens, num_tactile_tokens, max_text_len, device,
+        segment_tokens, segment_tokens, max_text_len, device,
     )
 
     z_tactile = torch.randn_like(visual_latent)
@@ -253,33 +412,118 @@ def generate_tactile_video(model, vae_model, text_tokenizer, showo_token_ids, sa
         only_denoise_last_image=True,
     )
 
-    sample_fn = sampler.sample_ode(
-        sampling_method=sampling_method, num_steps=num_inference_steps,
-        atol=atol, rtol=rtol, reverse=reverse,
-        time_shifting_factor=time_shifting_factor,
+    sample_fn = build_sampler_for_segment(
+        segment_tokens, sampling_method, num_inference_steps,
+        atol, rtol, reverse, time_shifting_factor,
     )
-    samples = sample_fn(initial_latents, model.t2i_generate, **model_kwargs)[-1]
+    with autocast_context(device, weight_type):
+        samples = sample_fn(initial_latents, model.t2i_generate, **model_kwargs)[-1]
     if guidance_scale > 0:
         samples = torch.chunk(samples, 2)[0]
     generated = samples[-1:]  # tactile latents only
-    return vae_model.batch_decode(generated)
+    return decode_tactile_latents(vae_model, generated)
 
 
 @torch.no_grad()
-def generate_qa_answer(model, vae_model, text_tokenizer, showo_token_ids, sampler,
-                       question, visual_video_frames, num_frames, guidance_scale,
-                       device, weight_type, num_visual_tokens, num_tactile_tokens,
-                       max_text_len, sampling_method, num_inference_steps, atol, rtol,
-                       reverse, time_shifting_factor):
+def build_qa_prefix_embeds(model, qa_tokens, qa_positions, image_latents, device, weight_type):
+    """Reconstruct the interleaved [text + visual + tactile] embedding sequence the
+    same way model.forward() does, so it can be used as a prefix for autoregressive
+    answer decoding via mmu_generate.
+
+    qa_tokens: (1, L) full QA token sequence (answer region is empty placeholder, so
+               the meaningful prefix ends at the tactile EOV token).
+    image_latents: (2, C, T, H, W) — [visual_latent, generated_tactile_latent].
+    Returns prefix input_embeds (1, prefix_len, D) up to and including the tactile EOV.
+    """
+    input_embeds = model.showo.model.embed_tokens(qa_tokens)  # (1, L, D)
+    dtype = input_embeds.dtype
+
+    b, c, T, h, w = image_latents.shape
+    p = model.config.patch_size
+    h_, w_ = h // p, w // p
+
+    # Dual-path image embedding (mirror of forward())
+    latents_flat = rearrange(image_latents, 'b c t h w -> (b t) c h w').to(dtype)
+    image_embeds_und = model.image_embedder_und(latents_flat)
+    image_embeds_und = image_embeds_und.reshape(b, T, -1, model.config.clip_latent_dim)
+    image_embeds_und = rearrange(image_embeds_und, 'b t l d -> (b t) l d')
+    image_embeds_gen = model.image_embedder_gen(latents_flat)
+    image_embeds_gen = image_embeds_gen.reshape(b, T, -1, model.config.hidden_size)
+    image_embeds_gen = rearrange(image_embeds_gen, 'b t l d -> b (t l) d')
+
+    if model.position_embedding.weight.shape[0] == model.image_position_ids.shape[-1]:
+        image_embeds_und = image_embeds_und + model.position_embedding(model.image_position_ids)
+    else:
+        image_embeds_und = image_embeds_und + interpolate_pos_encoding(
+            model.config.clip_latent_dim, model.position_embedding, h_, w_, 1,
+        )
+    image_embeds_und = model.und_trans(image_embeds_und)['last_hidden_state']
+    image_embeds_und = image_embeds_und.reshape(b, T, image_embeds_und.shape[1], -1)
+    image_embeds_und = rearrange(image_embeds_und, 'b t l d -> b (t l) d')
+
+    image_embeds = model.fusion_proj(torch.cat([image_embeds_und, image_embeds_gen], dim=-1))
+
+    # Clean-condition time embedding (t=1.0) for both video segments
+    t = torch.ones(b, device=device, dtype=weight_type)
+    time_embeds = model.time_embed(t, dtype)
+    if hasattr(model, 'time_embed_proj'):
+        time_embeds = model.time_embed_proj(time_embeds)
+
+    # Scatter image embeds into their modality positions (mirror of forward())
+    for j, (offset, length) in enumerate(qa_positions[0]):
+        offset = int(offset.item())
+        length = int(length.item())
+        if length == 0:
+            continue
+        if model.config.add_time_embeds:
+            input_embeds[0, offset] = time_embeds[j]
+            input_embeds[0, offset + 1:offset + length] = image_embeds[j, :length - 1]
+        else:
+            input_embeds[0, offset:offset + length] = image_embeds[j, :length]
+
+    # Prefix ends right after the tactile EOV token (offset+length is tactile EOV's
+    # position; +1 to include it). Everything after is empty answer placeholder/pad.
+    tactile_offset = int(qa_positions[0, 1, 0].item())
+    tactile_length = int(qa_positions[0, 1, 1].item())
+    prefix_len = tactile_offset + tactile_length + 1  # +1 includes the EOV token
+    return input_embeds[:, :prefix_len].to(weight_type)
+
+
+@torch.no_grad()
+def decode_qa_answer_from_latents(model, text_tokenizer, qa_tokens, qa_positions,
+                                  image_latents, device, weight_type,
+                                  max_new_tokens=100, top_k=None):
+    with autocast_context(device, weight_type):
+        prefix_embeds = build_qa_prefix_embeds(
+            model, qa_tokens, qa_positions, image_latents, device, weight_type,
+        )
+        gen_attn_mask = omni_attn_mask_naive(
+            1, prefix_embeds.size(1), qa_positions, device,
+        ).to(weight_type)
+        output_tokens = model.mmu_generate(
+            input_embeds=prefix_embeds,
+            attention_mask=gen_attn_mask,
+            max_new_tokens=max_new_tokens,
+            top_k=top_k,
+            eos_token=text_tokenizer.eos_token_id,
+        )
+    answer_ids = [tok.item() if torch.is_tensor(tok) else tok for tok in output_tokens]
+    return text_tokenizer.decode(answer_ids, skip_special_tokens=True)
+
+
+@torch.no_grad()
+def generate_qa_answer(model, vae_model, text_tokenizer, showo_token_ids,
+                       question, visual_video_frames, device, weight_type,
+                       sampling_method, num_inference_steps, atol, rtol,
+                       reverse, time_shifting_factor, max_new_tokens=100, top_k=None):
     """QA mode: generate tactile video + answer text from question + visual condition."""
-    # Encode visual video
-    visual_input = visual_video_frames.unsqueeze(0).to(device=device, dtype=weight_type)
-    visual_latent = vae_model.sample(visual_input)
+    visual_latent = encode_video_latents(vae_model, visual_video_frames, device, weight_type)
+    _, segment_tokens, max_text_len, _ = resolve_latent_token_layout(model, visual_latent)
 
     # Build QA sequence with empty answer
-    qa_tokens, qa_positions, qa_text_mask, qa_image_mask = prepare_qa_batch(
+    qa_tokens, qa_positions = prepare_qa_batch(
         question, text_tokenizer, showo_token_ids,
-        num_visual_tokens, num_tactile_tokens, max_text_len, device,
+        segment_tokens, segment_tokens, max_text_len, device,
     )
 
     # Generate tactile video + answer
@@ -297,42 +541,55 @@ def generate_qa_answer(model, vae_model, text_tokenizer, showo_token_ids, sample
         max_seq_len=qa_tokens.size(1), guidance_scale=0.0,
         only_denoise_last_image=True,
     )
-    sample_fn = sampler.sample_ode(
-        sampling_method=sampling_method, num_steps=num_inference_steps,
-        atol=atol, rtol=rtol, reverse=reverse,
-        time_shifting_factor=time_shifting_factor,
+    sample_fn = build_sampler_for_segment(
+        segment_tokens, sampling_method, num_inference_steps,
+        atol, rtol, reverse, time_shifting_factor,
     )
-    samples_qa = sample_fn(image_latents_qa, model.t2i_generate, **model_kwargs)[-1]
-    generated_tactile = vae_model.batch_decode(samples_qa[-1:])
+    with autocast_context(device, weight_type):
+        samples_qa = sample_fn(image_latents_qa, model.t2i_generate, **model_kwargs)[-1]
+    generated_tactile = decode_tactile_latents(vae_model, samples_qa[-1:])
 
-    # Decode answer text from NTP logits (forward pass on completed tactile)
-    logits, _, _ = model(
-        text_tokens=qa_tokens, image_latents=samples_qa,
-        t=torch.ones(samples_qa.shape[0], device=device).to(weight_type),
-        attention_mask=block_mask_qa, text_masks=qa_text_mask,
-        image_masks=qa_image_mask,
-        text_labels=torch.full_like(qa_tokens, -100),
-        image_labels=torch.zeros_like(samples_qa[:, :1, :, :, :]),
-        modality_positions=qa_positions, output_hidden_states=True,
-        max_seq_len=qa_tokens.size(1), device=device,
+    answer_text = decode_qa_answer_from_latents(
+        model, text_tokenizer, qa_tokens, qa_positions, samples_qa,
+        device, weight_type, max_new_tokens=max_new_tokens, top_k=top_k,
     )
-
-    # Extract predicted answer tokens
-    pred_ids = logits[0, :-1].argmax(dim=-1)
-    # Find answer region (non -100 positions in the sequence that come after video)
-    # The answer region starts after the tactile video EOV token
-    tactile_eov_pos = qa_positions[0, 1, 0] + qa_positions[0, 1, 1]  # tactile_offset + tactile_length
-    answer_start = tactile_eov_pos + 1  # +1 for EOV
-    # Use token after the EOV as start; decode until EOS or pad
-    answer_tokens = []
-    for pos in range(answer_start, min(answer_start + 100, len(pred_ids))):
-        tid = pred_ids[pos].item()
-        if tid == text_tokenizer.eos_token_id or tid == text_tokenizer.pad_token_id:
-            break
-        answer_tokens.append(tid)
-
-    answer_text = text_tokenizer.decode(answer_tokens, skip_special_tokens=True)
     return generated_tactile, answer_text
+
+
+@torch.no_grad()
+def generate_qa_answer_from_tactile_condition(
+        model, vae_model, text_tokenizer, showo_token_ids,
+        question, visual_video_frames, tactile_video_frames,
+        device, weight_type, max_new_tokens=100, top_k=None,
+        vae_deterministic=False,
+):
+    """Decode an answer from real/generated tactile condition without denoising.
+
+    This is the phase-2 path for two-stage evaluation: visual and tactile videos
+    are both encoded as clean VAE latents, then the answer is decoded
+    autoregressively through model.mmu_generate().
+    """
+    visual_latent = encode_video_latents(
+        vae_model, visual_video_frames, device, weight_type,
+        deterministic=vae_deterministic,
+    )
+    _, segment_tokens, max_text_len, _ = resolve_latent_token_layout(model, visual_latent)
+
+    tactile_latent = encode_video_latents(
+        vae_model, tactile_video_frames, device, weight_type,
+        deterministic=vae_deterministic,
+    )
+
+    qa_tokens, qa_positions = prepare_qa_batch(
+        question, text_tokenizer, showo_token_ids,
+        segment_tokens, segment_tokens, max_text_len, device,
+    )
+
+    image_latents = torch.cat([visual_latent, tactile_latent], dim=0)
+    return decode_qa_answer_from_latents(
+        model, text_tokenizer, qa_tokens, qa_positions, image_latents,
+        device, weight_type, max_new_tokens=max_new_tokens, top_k=top_k,
+    )
 
 
 # ==============================================================================
@@ -394,12 +651,25 @@ def save_video_frames(frames_tensor, output_path, fps=2):
         Image.fromarray(frame).save(os.path.join(output_path, f"frame_{i:04d}.png"))
 
 
+def save_condition_videos(args, output_path, visual_frames, tactile_frames=None):
+    if not args.save_conditions:
+        return
+    stem = os.path.splitext(output_path)[0]
+    save_video_frames(visual_frames, f"{stem}_visual.mp4", fps=args.fps)
+    if tactile_frames is not None:
+        save_video_frames(tactile_frames, f"{stem}_target.mp4", fps=args.fps)
+
+
+def write_jsonl(path, entries):
+    with open(path, "w", encoding="utf-8") as f:
+        for entry in entries:
+            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+
+
 # ==============================================================================
 # Main entry points
 # ==============================================================================
-def run_single_inference(args, model, vae_model, text_tokenizer, showo_token_ids, sampler, device, weight_type):
-    num_visual_tokens, num_tactile_tokens, max_text_len = _resolve_token_counts(model, args)
-
+def run_single_inference(args, model, vae_model, text_tokenizer, showo_token_ids, device, weight_type):
     print(f"Loading visual frames from {args.visual_video_dir}...")
     visual_frames = load_video_frames(args.visual_video_dir, args.num_frames, args.image_size,
                                       sampling_mode=args.sampling_mode, clip_start=args.clip_start)
@@ -409,11 +679,10 @@ def run_single_inference(args, model, vae_model, text_tokenizer, showo_token_ids
         print(f"QA mode: generating tactile video + answer for question...")
         print(f"  Question: {args.text[:200]}...")
         generated, answer = generate_qa_answer(
-            model, vae_model, text_tokenizer, showo_token_ids, sampler,
-            question=args.text, visual_video_frames=visual_frames, num_frames=args.num_frames,
-            guidance_scale=args.guidance_scale, device=device, weight_type=weight_type,
-            num_visual_tokens=num_visual_tokens, num_tactile_tokens=num_tactile_tokens,
-            max_text_len=max_text_len, sampling_method=args.sampling_method,
+            model, vae_model, text_tokenizer, showo_token_ids,
+            question=args.text, visual_video_frames=visual_frames,
+            device=device, weight_type=weight_type,
+            sampling_method=args.sampling_method,
             num_inference_steps=args.num_inference_steps, atol=args.atol, rtol=args.rtol,
             reverse=args.reverse, time_shifting_factor=args.time_shifting_factor,
         )
@@ -426,11 +695,10 @@ def run_single_inference(args, model, vae_model, text_tokenizer, showo_token_ids
         print(f"Pure generation: text + visual → tactile")
         print(f"  Text: {args.text[:200]}...")
         generated = generate_tactile_video(
-            model, vae_model, text_tokenizer, showo_token_ids, sampler,
-            text_prompt=args.text, visual_video_frames=visual_frames, num_frames=args.num_frames,
+            model, vae_model, text_tokenizer, showo_token_ids,
+            text_prompt=args.text, visual_video_frames=visual_frames,
             guidance_scale=args.guidance_scale, device=device, weight_type=weight_type,
-            num_visual_tokens=num_visual_tokens, num_tactile_tokens=num_tactile_tokens,
-            max_text_len=max_text_len, sampling_method=args.sampling_method,
+            sampling_method=args.sampling_method,
             num_inference_steps=args.num_inference_steps, atol=args.atol, rtol=args.rtol,
             reverse=args.reverse, time_shifting_factor=args.time_shifting_factor,
         )
@@ -444,36 +712,48 @@ def _resolve_token_counts(model, args):
     return segment_tokens, segment_tokens, max_text_len
 
 
-def run_batch_test(args, model, vae_model, text_tokenizer, showo_token_ids, sampler, device, weight_type):
-    num_visual_tokens, num_tactile_tokens, max_text_len = _resolve_token_counts(model, args)
+def build_tactile_visual_dataset(args, text_tokenizer, showo_token_ids, num_visual_tokens, num_tactile_tokens):
+    return TactileVisualDataset(
+        data_root=args.tactile_data_root, csv_path=args.tactile_csv_path,
+        text_tokenizer=text_tokenizer, max_seq_len=DEFAULT_SEQ_LEN,
+        image_size=args.image_size, latent_height=DEFAULT_LATENT_H,
+        latent_width=DEFAULT_LATENT_W, num_frames=args.num_frames,
+        num_visual_tokens_per_frame=DEFAULT_TOKENS_PER_FRAME,
+        num_tactile_tokens_per_frame=DEFAULT_TOKENS_PER_FRAME,
+        num_visual_tokens=num_visual_tokens, num_tactile_tokens=num_tactile_tokens,
+        cond_dropout_prob=0.0, split=args.eval_split,
+        showo_token_ids=showo_token_ids,
+    )
+
+
+def build_tactile_qa_dataset(args, text_tokenizer, showo_token_ids, num_visual_tokens, num_tactile_tokens):
+    return TactileQADataset(
+        data_root=args.tactile_data_root, csv_path=args.tactile_csv_path,
+        tactile_qa_csv_path=args.tactile_qa_csv_path,
+        text_tokenizer=text_tokenizer, max_seq_len=DEFAULT_SEQ_LEN,
+        image_size=args.image_size, latent_height=DEFAULT_LATENT_H,
+        latent_width=DEFAULT_LATENT_W, num_frames=args.num_frames,
+        num_visual_tokens_per_frame=DEFAULT_TOKENS_PER_FRAME,
+        num_tactile_tokens_per_frame=DEFAULT_TOKENS_PER_FRAME,
+        num_visual_tokens=num_visual_tokens, num_tactile_tokens=num_tactile_tokens,
+        cond_dropout_prob=0.0, split=args.eval_split,
+        showo_token_ids=showo_token_ids,
+    )
+
+
+def run_batch_test(args, model, vae_model, text_tokenizer, showo_token_ids, device, weight_type):
+    num_visual_tokens, num_tactile_tokens, _ = _resolve_token_counts(model, args)
 
     if args.qa_mode:
         print(f"Building QA test dataset from {args.tactile_qa_csv_path}...")
-        dataset = TactileQADataset(
-            data_root=args.tactile_data_root, csv_path=args.tactile_csv_path,
-            tactile_qa_csv_path=args.tactile_qa_csv_path,
-            text_tokenizer=text_tokenizer, max_seq_len=DEFAULT_SEQ_LEN,
-            image_size=args.image_size, latent_height=DEFAULT_LATENT_H,
-            latent_width=DEFAULT_LATENT_W, num_frames=args.num_frames,
-            num_visual_tokens_per_frame=DEFAULT_TOKENS_PER_FRAME,
-            num_tactile_tokens_per_frame=DEFAULT_TOKENS_PER_FRAME,
-            num_visual_tokens=num_visual_tokens, num_tactile_tokens=num_tactile_tokens,
-            cond_dropout_prob=0.0, split=args.eval_split,
-            showo_token_ids=showo_token_ids,
+        dataset = build_tactile_qa_dataset(
+            args, text_tokenizer, showo_token_ids, num_visual_tokens, num_tactile_tokens,
         )
         mode_label = "QA"
     else:
         print(f"Building test dataset from {args.tactile_csv_path}...")
-        dataset = TactileVisualDataset(
-            data_root=args.tactile_data_root, csv_path=args.tactile_csv_path,
-            text_tokenizer=text_tokenizer, max_seq_len=DEFAULT_SEQ_LEN,
-            image_size=args.image_size, latent_height=DEFAULT_LATENT_H,
-            latent_width=DEFAULT_LATENT_W, num_frames=args.num_frames,
-            num_visual_tokens_per_frame=DEFAULT_TOKENS_PER_FRAME,
-            num_tactile_tokens_per_frame=DEFAULT_TOKENS_PER_FRAME,
-            num_visual_tokens=num_visual_tokens, num_tactile_tokens=num_tactile_tokens,
-            cond_dropout_prob=0.0, split=args.eval_split,
-            showo_token_ids=showo_token_ids,
+        dataset = build_tactile_visual_dataset(
+            args, text_tokenizer, showo_token_ids, num_visual_tokens, num_tactile_tokens,
         )
         mode_label = "Pure Gen"
 
@@ -483,32 +763,27 @@ def run_batch_test(args, model, vae_model, text_tokenizer, showo_token_ids, samp
     manifest = []
     success = 0
 
-    for idx in range(len(dataset)):
-        sample = dataset[idx]
-        if sample is None:
-            continue
-
-        object_name = sample.get('object_names', f'sample_{idx}')
-        print(f"\n[{idx + 1}/{len(dataset)}] {object_name}")
+    for idx, sample in enumerate(dataset.samples, start=1):
+        object_name = sample.get('object_name', f'sample_{idx - 1}')
+        print(f"\n[{idx}/{len(dataset.samples)}] {object_name}")
 
         try:
-            # Load visual frames
-            visual_frames, sel_indices = load_video_frames(
-                sample['visual_dir'], args.num_frames, args.image_size,
-                frame_indices=sample.get('frame_indices'),
-                sampling_mode=args.sampling_mode, return_indices=True,
+            selected_indices = dataset._select_frame_indices(sample["frame_indices"])
+            visual_frames, sel_indices = dataset.load_sample_video(
+                sample, "visual", selected_indices
             )
+            tactile_target = None
+            if args.save_conditions:
+                tactile_target, _ = dataset.load_sample_video(
+                    sample, "tactile", selected_indices
+                )
 
             if args.qa_mode:
-                question = sample.get('question', sample.get('texts', ''))
+                question = sample.get('question', '')
                 generated, answer = generate_qa_answer(
-                    model, vae_model, text_tokenizer, showo_token_ids, sampler,
+                    model, vae_model, text_tokenizer, showo_token_ids,
                     question=question, visual_video_frames=visual_frames,
-                    num_frames=args.num_frames, guidance_scale=args.guidance_scale,
                     device=device, weight_type=weight_type,
-                    num_visual_tokens=num_visual_tokens,
-                    num_tactile_tokens=num_tactile_tokens,
-                    max_text_len=max_text_len,
                     sampling_method=args.sampling_method,
                     num_inference_steps=args.num_inference_steps,
                     atol=args.atol, rtol=args.rtol,
@@ -525,15 +800,12 @@ def run_batch_test(args, model, vae_model, text_tokenizer, showo_token_ids, samp
                     'frame_indices': sel_indices,
                 }
             else:
-                text = sample.get('texts', '')
+                text = sample.get('text', '')
                 generated = generate_tactile_video(
-                    model, vae_model, text_tokenizer, showo_token_ids, sampler,
+                    model, vae_model, text_tokenizer, showo_token_ids,
                     text_prompt=text, visual_video_frames=visual_frames,
-                    num_frames=args.num_frames, guidance_scale=args.guidance_scale,
+                    guidance_scale=args.guidance_scale,
                     device=device, weight_type=weight_type,
-                    num_visual_tokens=num_visual_tokens,
-                    num_tactile_tokens=num_tactile_tokens,
-                    max_text_len=max_text_len,
                     sampling_method=args.sampling_method,
                     num_inference_steps=args.num_inference_steps,
                     atol=args.atol, rtol=args.rtol,
@@ -548,6 +820,7 @@ def run_batch_test(args, model, vae_model, text_tokenizer, showo_token_ids, samp
 
             out_path = os.path.join(args.output_dir, f"{object_name}.mp4")
             save_video_frames(generated, out_path, fps=args.fps)
+            save_condition_videos(args, out_path, visual_frames, tactile_target)
             entry['output_path'] = out_path
             entry['status'] = 'success'
             manifest.append(entry)
@@ -559,10 +832,174 @@ def run_batch_test(args, model, vae_model, text_tokenizer, showo_token_ids, samp
             manifest.append({'object_name': object_name, 'status': 'failed', 'error': str(exc)})
 
     manifest_path = os.path.join(args.output_dir, "manifest.jsonl")
-    with open(manifest_path, "w") as f:
-        for entry in manifest:
-            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    write_jsonl(manifest_path, manifest)
     print(f"\nDone: {success}/{len(dataset)} successful. Manifest saved to {manifest_path}")
+
+
+def run_two_stage_eval(args, model, vae_model, text_tokenizer, showo_token_ids, device, weight_type):
+    num_visual_tokens, num_tactile_tokens, _ = _resolve_token_counts(model, args)
+
+    if args.qa_condition_source != "target_tactile":
+        raise ValueError(
+            f"Unsupported --qa_condition_source={args.qa_condition_source}. "
+            "This implementation currently supports only 'target_tactile'."
+        )
+
+    print(f"[Phase 2/2] Building QA dataset from {args.tactile_qa_csv_path}...")
+    qa_dataset = build_tactile_qa_dataset(
+        args, text_tokenizer, showo_token_ids, num_visual_tokens, num_tactile_tokens,
+    )
+    qa_count = min(args.qa_sample_size, len(qa_dataset.samples))
+    sampled_indices = random.Random(args.qa_sample_seed).sample(
+        range(len(qa_dataset.samples)), qa_count
+    ) if qa_count > 0 else []
+    print(
+        f"  QA samples: {len(qa_dataset)} total, "
+        f"sampling {qa_count} with seed {args.qa_sample_seed}"
+    )
+
+    qa_results_path = args.qa_results_path or os.path.join(args.output_dir, "qa_results.jsonl")
+    os.makedirs(os.path.dirname(qa_results_path) or ".", exist_ok=True)
+
+    qa_success = 0
+    qa_failures = 0
+    with open(qa_results_path, "w", encoding="utf-8") as f:
+        for ordinal, sample_index in enumerate(sampled_indices, start=1):
+            sample = qa_dataset.samples[sample_index]
+            object_name = sample.get("object_name", f"sample_{sample_index}")
+            question = sample.get("question", "")
+            print(f"\n[Phase 2][{ordinal}/{qa_count}] {object_name} | sample_index={sample_index}")
+
+            entry = {
+                "sample_index": sample_index,
+                "object_name": object_name,
+                "question": question,
+                "gt_answer": sample.get("answer", ""),
+                "qa_type": sample.get("qa_type", ""),
+                "qa_condition_source": args.qa_condition_source,
+            }
+
+            try:
+                selected_indices = qa_dataset._select_frame_indices(sample["frame_indices"])
+                visual_frames, sel_indices = qa_dataset.load_sample_video(
+                    sample, "visual", selected_indices
+                )
+                tactile_frames, _ = qa_dataset.load_sample_video(
+                    sample, "tactile", selected_indices
+                )
+                answer = generate_qa_answer_from_tactile_condition(
+                    model, vae_model, text_tokenizer, showo_token_ids,
+                    question=question,
+                    visual_video_frames=visual_frames,
+                    tactile_video_frames=tactile_frames,
+                    device=device,
+                    weight_type=weight_type,
+                    vae_deterministic=args.vae_deterministic,
+                )
+                entry.update({
+                    "predicted_answer": answer,
+                    "frame_indices": sel_indices,
+                    "status": "success",
+                })
+                qa_success += 1
+                print(f"  Answer: {answer}")
+            except Exception as exc:
+                entry.update({
+                    "predicted_answer": "",
+                    "frame_indices": [],
+                    "status": "failed",
+                    "error": str(exc),
+                })
+                qa_failures += 1
+                print(f"  ✗ QA failed for {object_name}: {exc}")
+
+            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+
+    print(f"[Phase 2] Done: {qa_success}/{qa_count} successful. Results: {qa_results_path}")
+
+    generated_dir = os.path.join(args.output_dir, "generated")
+    os.makedirs(generated_dir, exist_ok=True)
+
+    print(f"\n[Phase 1/2] Building tactile generation dataset from {args.tactile_csv_path}...")
+    gen_dataset = build_tactile_visual_dataset(
+        args, text_tokenizer, showo_token_ids, num_visual_tokens, num_tactile_tokens,
+    )
+    print(f"  Generation samples: {len(gen_dataset)} in '{args.eval_split}' split")
+
+    gen_manifest = []
+    gen_success = 0
+    for idx, sample in enumerate(gen_dataset.samples, start=1):
+        object_name = sample.get("object_name", f"sample_{idx - 1}")
+        print(f"\n[Phase 1][{idx}/{len(gen_dataset.samples)}] {object_name}")
+
+        try:
+            selected_indices = gen_dataset._select_frame_indices(sample["frame_indices"])
+            visual_frames, sel_indices = gen_dataset.load_sample_video(
+                sample, "visual", selected_indices
+            )
+            tactile_target = None
+            if args.save_conditions:
+                tactile_target, _ = gen_dataset.load_sample_video(
+                    sample, "tactile", selected_indices
+                )
+
+            generated = generate_tactile_video(
+                model, vae_model, text_tokenizer, showo_token_ids,
+                text_prompt=sample.get("text", ""),
+                visual_video_frames=visual_frames,
+                guidance_scale=args.guidance_scale,
+                device=device,
+                weight_type=weight_type,
+                sampling_method=args.sampling_method,
+                num_inference_steps=args.num_inference_steps,
+                atol=args.atol,
+                rtol=args.rtol,
+                reverse=args.reverse,
+                time_shifting_factor=args.time_shifting_factor,
+                vae_deterministic=args.vae_deterministic,
+            )
+
+            out_path = os.path.join(generated_dir, f"{object_name}.mp4")
+            save_video_frames(generated, out_path, fps=args.fps)
+            save_condition_videos(args, out_path, visual_frames, tactile_target)
+
+            gen_manifest.append({
+                "object_name": object_name,
+                "text": sample.get("text", ""),
+                "frame_indices": sel_indices,
+                "output_path": out_path,
+                "status": "success",
+            })
+            gen_success += 1
+            print(f"  ✓ generated {object_name}")
+        except Exception as exc:
+            print(f"  ✗ generation failed for {object_name}: {exc}")
+            gen_manifest.append({
+                "object_name": object_name,
+                "status": "failed",
+                "error": str(exc),
+            })
+
+    gen_manifest_path = os.path.join(args.output_dir, "tactile_generation_manifest.jsonl")
+    write_jsonl(gen_manifest_path, gen_manifest)
+    print(f"[Phase 1] Done: {gen_success}/{len(gen_dataset)} successful. Manifest: {gen_manifest_path}")
+
+    qa_summary = {
+        "total_attempted": qa_count,
+        "success_count": qa_success,
+        "failure_count": qa_failures,
+        "qa_sample_seed": args.qa_sample_seed,
+        "qa_sample_size": args.qa_sample_size,
+        "qa_condition_source": args.qa_condition_source,
+        "qa_results_path": qa_results_path,
+        "generation_total": len(gen_dataset),
+        "generation_success_count": gen_success,
+        "generation_manifest_path": gen_manifest_path,
+    }
+    qa_summary_path = os.path.splitext(qa_results_path)[0] + "_summary.json"
+    with open(qa_summary_path, "w", encoding="utf-8") as f:
+        json.dump(qa_summary, f, ensure_ascii=False, indent=2)
+    print(f"[Two-stage Eval] Summary: {qa_summary_path}")
 
 
 def main():
@@ -600,6 +1037,17 @@ def main():
     # Mode
     parser.add_argument("--batch_test", action="store_true", help="Run batch inference on entire test split")
     parser.add_argument("--qa_mode", action="store_true", help="Enable QA mode (question → answer + tactile video)")
+    parser.add_argument("--two_stage_eval", action="store_true",
+                        help="Run phase 1 tactile generation for all objects, then phase 2 QA on sampled questions")
+    parser.add_argument("--qa_sample_size", type=int, default=50,
+                        help="Number of QA rows sampled for --two_stage_eval")
+    parser.add_argument("--qa_sample_seed", type=int, default=42,
+                        help="Random seed for reproducible QA sampling in --two_stage_eval")
+    parser.add_argument("--qa_condition_source", type=str, default="target_tactile",
+                        choices=["target_tactile"],
+                        help="Tactile condition source for phase-2 QA")
+    parser.add_argument("--qa_results_path", type=str, default=None,
+                        help="JSONL path for phase-2 QA results; defaults to output_dir/qa_results.jsonl")
     # Data paths (batch test)
     parser.add_argument("--tactile_data_root", type=str, default=None)
     parser.add_argument("--tactile_csv_path", type=str, default=None)
@@ -615,21 +1063,27 @@ def main():
     print("=" * 60)
     print("Stage 2 Tactile Video Inference")
     print(f"  Checkpoint: {args.stage2_checkpoint}")
-    print(f"  Mode: {'QA' if args.qa_mode else 'Pure Generation'}")
+    if args.two_stage_eval:
+        mode_name = "Two-Stage Eval"
+    else:
+        mode_name = "QA" if args.qa_mode else "Pure Generation"
+    print(f"  Mode: {mode_name}")
     print(f"  Batch: {args.batch_test}")
     print("=" * 60)
 
     print("[1/4] Loading model...")
-    model, vae_model, text_tokenizer, showo_token_ids, sampler = load_model(args, device, weight_type)
+    model, vae_model, text_tokenizer, showo_token_ids = load_model(args, device, weight_type)
     print("[2/4] Model loaded.")
     print("[3/4] Running inference...")
 
-    if args.batch_test:
-        run_batch_test(args, model, vae_model, text_tokenizer, showo_token_ids, sampler, device, weight_type)
+    if args.two_stage_eval:
+        run_two_stage_eval(args, model, vae_model, text_tokenizer, showo_token_ids, device, weight_type)
+    elif args.batch_test:
+        run_batch_test(args, model, vae_model, text_tokenizer, showo_token_ids, device, weight_type)
     else:
         if args.visual_video_dir is None:
             parser.error("--visual_video_dir is required for single inference")
-        run_single_inference(args, model, vae_model, text_tokenizer, showo_token_ids, sampler, device, weight_type)
+        run_single_inference(args, model, vae_model, text_tokenizer, showo_token_ids, device, weight_type)
 
 
 if __name__ == "__main__":

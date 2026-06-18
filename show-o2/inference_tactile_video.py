@@ -114,7 +114,16 @@ def resolve_checkpoint_dir(checkpoint_path):
 
 def resolve_weight_file(model_path):
     if os.path.isdir(model_path):
-        for filename in ("pytorch_model.bin", "model.safetensors"):
+        # Prefer single-file checkpoints, then fall back to sharded index files
+        # (save_pretrained shards once the state dict exceeds max_shard_size).
+        for filename in (
+            "pytorch_model.bin",
+            "model.safetensors",
+            "pytorch_model.bin.index.json",
+            "model.safetensors.index.json",
+            "diffusion_pytorch_model.bin.index.json",
+            "diffusion_pytorch_model.safetensors.index.json",
+        ):
             weight_file = os.path.join(model_path, filename)
             if os.path.exists(weight_file):
                 return weight_file
@@ -124,6 +133,15 @@ def resolve_weight_file(model_path):
 
 
 def load_checkpoint_state_dict(weight_file):
+    # Sharded checkpoint: merge every shard listed in the index's weight_map.
+    if weight_file.endswith(".index.json"):
+        shard_dir = os.path.dirname(weight_file)
+        with open(weight_file, "r", encoding="utf-8") as index_file:
+            index = json.load(index_file)
+        merged = {}
+        for shard_name in sorted(set(index["weight_map"].values())):
+            merged.update(load_checkpoint_state_dict(os.path.join(shard_dir, shard_name)))
+        return merged
     if weight_file.endswith(".safetensors"):
         try:
             from safetensors.torch import load_file
@@ -819,6 +837,10 @@ def main():
     parser.add_argument("--time_embed_layout", type=str, default="auto",
                         choices=["auto", "with_time_token", "without_time_token"],
                         help="视频 token 段是否包含 time embedding 位置；auto 根据 checkpoint config 判断")
+    parser.add_argument("--virtual_force_coeff", type=float, default=0.0,
+                        help="训练阶段 virtual force proxy loss 系数；推理阶段仅用于记录/脚本兼容")
+    parser.add_argument("--contact_weighted_flow_alpha", type=float, default=0.0,
+                        help="训练阶段 contact-weighted flow loss 系数；推理阶段仅用于记录/脚本兼容")
     parser.add_argument("--vae_deterministic", action="store_true",
                         help="使用 VAE posterior mean 编码 visual condition，便于排除 VAE 随机采样误差")
     parser.add_argument("--allow_partial_checkpoint", action="store_true",
@@ -837,6 +859,11 @@ def main():
 
     device = torch.device(args.device if torch.cuda.is_available() else "cpu")
     weight_type = torch.bfloat16
+    print(
+        "Inference provenance: "
+        f"virtual_force_coeff={args.virtual_force_coeff}, "
+        f"contact_weighted_flow_alpha={args.contact_weighted_flow_alpha}"
+    )
 
     if args.batch_test:
         required_args = {

@@ -35,15 +35,15 @@ export TRANSFORMERS_OFFLINE=1
 MODEL_ROOT=/defaultShare/models
 
 # Stage 2 训练输出的 checkpoint（修改为你的实际路径）
-STAGE2_CHECKPOINT=outputs/showo2-1.5b-tactile-stage-2-qa/checkpoint-3000/unwrapped_model
+STAGE2_CHECKPOINT=/Show-o/show-o2/outputs/showo2-1.5b-tactile-stage-2-qa/checkpoint-3000/unwrapped_model
 
 # ========== 测试集数据路径 ==========
 TACTILE_DATA_ROOT=/defaultShare/data_indoor
-TACTILE_CSV_PATH=contact_indoor_list_tvl.csv
-QA_CSV_PATH=tac_QA/tactile_qa_pairs.csv
+TACTILE_CSV_PATH=/Show-o/show-o2/contact_indoor_list_tvl.csv
+QA_CSV_PATH=/Show-o/show-o2/tac_QA/tactile_qa_pairs.csv
 
 # ========== 输出目录 ==========
-OUTPUT_DIR=Inference/stage2_test
+OUTPUT_DIR=/Show-o/show-o2/Inference/stage2_test
 
 # ========== Mode Selection ==========
 # QA_MODE=true  → question + visual → tactile + answer text

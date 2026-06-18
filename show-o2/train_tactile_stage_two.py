@@ -416,8 +416,26 @@ def main():
             global_step = int(os.path.basename(path).split("-")[1])
             first_epoch = global_step // num_update_steps_per_epoch
 
-            accelerator.print(f"Resuming from checkpoint {path}/unwrapped_model/pytorch_model.bin")
-            state_dict = torch.load(f'{path}/unwrapped_model/pytorch_model.bin', map_location="cpu")
+            unwrapped_dir = f'{path}/unwrapped_model'
+            index_path = None
+            for index_name in ("pytorch_model.bin.index.json", "diffusion_pytorch_model.bin.index.json"):
+                candidate = f'{unwrapped_dir}/{index_name}'
+                if os.path.exists(candidate):
+                    index_path = candidate
+                    break
+            if index_path is not None:
+                # Sharded checkpoint: merge every shard listed in the index.
+                accelerator.print(f"Resuming from sharded checkpoint {index_path}")
+                with open(index_path, "r", encoding="utf-8") as index_file:
+                    weight_map = json.load(index_file)["weight_map"]
+                state_dict = {}
+                for shard_name in sorted(set(weight_map.values())):
+                    state_dict.update(
+                        torch.load(f'{unwrapped_dir}/{shard_name}', map_location="cpu")
+                    )
+            else:
+                accelerator.print(f"Resuming from checkpoint {unwrapped_dir}/pytorch_model.bin")
+                state_dict = torch.load(f'{unwrapped_dir}/pytorch_model.bin', map_location="cpu")
 
             if config.model.showo.params_not_load is not None:
                 params_to_delete = []
@@ -819,7 +837,8 @@ def save_checkpoint(model, config, accelerator, global_step):
             save_path / "unwrapped_model",
             save_function=accelerator.save,
             state_dict=state_dict,
-            safe_serialization=False
+            safe_serialization=False,
+            max_shard_size="50GB"  # Force single-file save (1.5B model ~6GB fp32)
         )
         json.dump({"global_step": global_step}, (save_path / "metadata.json").open("w+"))
         logger.info(f"Saved state to {save_path}")

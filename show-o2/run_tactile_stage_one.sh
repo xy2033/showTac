@@ -1,6 +1,7 @@
 #!/bin/bash
 set -e
 
+
 # =============================================================================
 # Stage 1: Tactile Domain Adaptation (集群离线版)
 #
@@ -13,11 +14,9 @@ set -e
 #   模型保存在 outputs/showo2-1.5b-tactile-stage-1/checkpoint-final/
 #   可直接用于推理: bash run_tactile_inference.sh
 # =============================================================================
-# ========== 指定 Python 和 Accelerate ==========
-PYTHON_EXECUTABLE="/root/miniconda3/envs/showO/bin/python"
-ACCELERATE_LAUNCH_MODULE="/root/miniconda3/envs/showO/lib/python3.10/site-packages/accelerate/commands/launch.py"
+
 # ========== GPU 设置 ==========
-export CUDA_VISIBLE_DEVICES=0,1
+export CUDA_VISIBLE_DEVICES=0
 
 # ========== 离线模式 (集群无网络) ==========
 export WANDB_MODE=offline
@@ -31,15 +30,17 @@ MODEL_ROOT=/defaultShare/models
 # 触觉数据路径 — 根据你的集群数据路径修改
 TACTILE_DATA_ROOT=/defaultShare/data_indoor
 TACTILE_CSV_PATH=contact_indoor_list_tvl.csv
+
 # ========== Idea 消融超参数 ==========
 # 设为 0 即关闭对应方法:
 #   VIRTUAL_FORCE_COEFF=0 CONTACT_WEIGHTED_FLOW_ALPHA=0 bash run_tactile_stage_one_ssa.sh
-VIRTUAL_FORCE_COEFF=${VIRTUAL_FORCE_COEFF:-0.1}
-# CONTACT_WEIGHTED_FLOW_ALPHA=${CONTACT_WEIGHTED_FLOW_ALPHA:-1.0}
-CONTACT_WEIGHTED_FLOW_ALPHA=0
+VIRTUAL_FORCE_COEFF=${VIRTUAL_FORCE_COEFF:-0.03}
+CONTACT_WEIGHTED_FLOW_ALPHA=${CONTACT_WEIGHTED_FLOW_ALPHA:-0.3}
+CONTACT_GATE_M=${CONTACT_GATE_M:-0.01013}
+CONTACT_GATE_S=${CONTACT_GATE_S:-0.00039}
 
 # ========== 启动训练 ==========
-"${PYTHON_EXECUTABLE}" "${ACCELERATE_LAUNCH_MODULE}" train_tactile_stage_one.py \
+accelerate launch train_tactile_stage_one.py \
     config=configs/showo2_1.5b_tactile_stage_one.yaml \
     model.showo.pretrained_model_path="${MODEL_ROOT}/show-o2-1.5B" \
     model.showo.llm_model_path="${MODEL_ROOT}/Qwen2.5-1.5B-Instruct" \
@@ -53,4 +54,6 @@ CONTACT_WEIGHTED_FLOW_ALPHA=0
     training.max_train_steps=50000 \
     training.virtual_force_coeff="${VIRTUAL_FORCE_COEFF}" \
     training.contact_weighted_flow_alpha="${CONTACT_WEIGHTED_FLOW_ALPHA}" \
+    training.contact_gate_m="${CONTACT_GATE_M}" \
+    training.contact_gate_s="${CONTACT_GATE_S}" \
     optimizer.params.learning_rate=0.0001

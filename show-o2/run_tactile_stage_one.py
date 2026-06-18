@@ -24,9 +24,13 @@ ACCELERATE_LAUNCH_MODULE = "/root/miniconda3/envs/showO/lib/python3.10/site-pack
 # =======================
 # Idea 消融超参数 (读取环境变量，若无则使用默认值)
 # =======================
-VIRTUAL_FORCE_COEFF = os.getenv("VIRTUAL_FORCE_COEFF", "0.1")
-# CONTACT_WEIGHTED_FLOW_ALPHA = os.getenv("CONTACT_WEIGHTED_FLOW_ALPHA", "1.0")
-CONTACT_WEIGHTED_FLOW_ALPHA = 0
+VIRTUAL_FORCE_COEFF = os.getenv("VIRTUAL_FORCE_COEFF", "0.2")
+CONTACT_WEIGHTED_FLOW_ALPHA = os.getenv("CONTACT_WEIGHTED_FLOW_ALPHA", "0.3")
+CONTACT_GATE_M = os.getenv("CONTACT_GATE_M", "0.01013")
+CONTACT_GATE_S = os.getenv("CONTACT_GATE_S", "0.00039")
+# CONTACT_WEIGHTED_FLOW_ALPHA = 0
+# VIRTUAL_FORCE_COEFF = os.getenv("VIRTUAL_FORCE_COEFF", "0.1")
+
 # =======================
 # accelerate launch 参数
 # =======================
@@ -45,8 +49,10 @@ args = [
     "experiment.generate_model_samples=True",
     "training.batch_size_tactile=1",
     "training.max_train_steps=50000",
-    f"training.virtual_force_coeff={VIRTUAL_FORCE_COEFF}",             # 新增参数 1
-    f"training.contact_weighted_flow_alpha={CONTACT_WEIGHTED_FLOW_ALPHA}", # 新增参数 2
+    f"training.virtual_force_coeff={VIRTUAL_FORCE_COEFF}",            
+    f"training.contact_weighted_flow_alpha={CONTACT_WEIGHTED_FLOW_ALPHA}", 
+    f"training.contact_gate_m={CONTACT_GATE_M}",             
+    f"training.contact_gate_s={CONTACT_GATE_S}", 
     "optimizer.params.learning_rate=0.0001",
 ]
 

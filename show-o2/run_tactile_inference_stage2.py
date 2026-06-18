@@ -20,23 +20,13 @@ ACCELERATE_LAUNCH_MODULE = "/root/miniconda3/envs/showO/lib/python3.10/site-pack
 # =======================
 MODEL_ROOT = "/defaultShare/models"
 
-STAGE2_CHECKPOINT = (
-    "outputs/"
-    "showo2-1.5b-tactile-stage-2-qa/"
-    "checkpoint-3000/unwrapped_model"
-)
+STAGE2_CHECKPOINT = "outputs/showo2-1.5b-tactile-stage-2-qa/checkpoint-6000/unwrapped_model"
 
 TACTILE_DATA_ROOT = "/defaultShare/data_indoor"
 TACTILE_CSV_PATH = "contact_indoor_list_tvl.csv"
 QA_CSV_PATH = "tac_QA/tactile_qa_pairs.csv"
 
 OUTPUT_DIR = "Inference/stage2_test"
-
-
-# =======================
-# Mode Selection (读取环境变量，若无则使用默认值)
-# =======================
-QA_MODE = os.getenv("QA_MODE", "true") == "true"
 
 
 # =======================
@@ -51,6 +41,14 @@ FPS = 2
 EVAL_SPLIT = "test"
 VAE_DETERMINISTIC = False
 
+# =======================
+# Two-stage QA 参数
+# =======================
+QA_SAMPLE_SIZE = int(os.getenv("QA_SAMPLE_SIZE", "50"))
+QA_SAMPLE_SEED = int(os.getenv("QA_SAMPLE_SEED", "42"))
+QA_CONDITION_SOURCE = os.getenv("QA_CONDITION_SOURCE", "target_tactile")
+QA_RESULTS_PATH = os.getenv("QA_RESULTS_PATH", os.path.join(OUTPUT_DIR, "qa_results.jsonl"))
+
 
 # =======================
 # python inference 参数
@@ -62,6 +60,7 @@ args = [
     "inference_tactile_video_stage2.py",
 
     "--batch_test",
+    "--two_stage_eval",
     "--stage2_checkpoint", STAGE2_CHECKPOINT,
     "--vae_path", f"{MODEL_ROOT}/Wan2.1_VAE.pth",
     "--llm_path", f"{MODEL_ROOT}/Qwen2.5-1.5B-Instruct",
@@ -78,11 +77,12 @@ args = [
     "--sampling_method", SAMPLING_METHOD,
     "--time_shifting_factor", str(TIME_SHIFTING_FACTOR),
     "--fps", str(FPS),
+    "--qa_sample_size", str(QA_SAMPLE_SIZE),
+    "--qa_sample_seed", str(QA_SAMPLE_SEED),
+    "--qa_condition_source", QA_CONDITION_SOURCE,
+    "--qa_results_path", QA_RESULTS_PATH,
     "--save_conditions",
 ]
-
-if QA_MODE:
-    args.append("--qa_mode")
 
 if VAE_DETERMINISTIC:
     args.append("--vae_deterministic")
@@ -91,7 +91,10 @@ if VAE_DETERMINISTIC:
 # =======================
 # 启动
 # =======================
-print("[INFO] Mode:", "QA" if QA_MODE else "Pure Generation")
+print("[INFO] Mode: Two-Stage Eval")
+print("[INFO] QA sample size:", QA_SAMPLE_SIZE)
+print("[INFO] QA sample seed:", QA_SAMPLE_SEED)
+print("[INFO] QA condition source:", QA_CONDITION_SOURCE)
 print("[INFO] Running command:")
 print(" ".join(args))
 

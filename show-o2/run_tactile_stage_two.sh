@@ -19,7 +19,7 @@ set -e
 # =============================================================================
 
 # ========== GPU 设置 ==========
-export CUDA_VISIBLE_DEVICES=0
+export CUDA_VISIBLE_DEVICES=0,1
 
 # ========== 离线模式 (集群无网络) ==========
 export WANDB_MODE=offline
@@ -60,12 +60,8 @@ NTP_COEFF=${NTP_COEFF:-0.5}
 # 设为 false 可强制要求 Stage 1 checkpoint 必须包含 tactile_force_head 权重
 ALLOW_MISSING_TACTILE_FORCE_HEAD=${ALLOW_MISSING_TACTILE_FORCE_HEAD:-true}
 
-
-# ========== 指定 Python 和 Accelerate ==========
-PYTHON_EXECUTABLE="/root/miniconda3/envs/showO/bin/python"
-ACCELERATE_LAUNCH_MODULE="/root/miniconda3/envs/showO/lib/python3.10/site-packages/accelerate/commands/launch.py"
 # ========== 启动训练 ==========
-"${PYTHON_EXECUTABLE}" "${ACCELERATE_LAUNCH_MODULE}"  train_tactile_stage_two.py \
+accelerate launch train_tactile_stage_two.py \
     config="${CONFIG}" \
     model.showo.pretrained_model_path="${STAGE1_CHECKPOINT}" \
     model.showo.allow_missing_tactile_force_head="${ALLOW_MISSING_TACTILE_FORCE_HEAD}" \

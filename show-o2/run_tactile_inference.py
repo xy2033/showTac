@@ -25,11 +25,7 @@ os.environ["TRANSFORMERS_OFFLINE"] = "1"
 # =======================
 MODEL_ROOT = "/defaultShare/models"
 
-STAGE1_CHECKPOINT = (
-    "outputs/"
-    "showo2-1.5b-tactile-stage-1_video/"
-    "checkpoint-45000/unwrapped_model"
-)
+STAGE1_CHECKPOINT = "outputs/showo2-1.5b-tactile-stage-1_video/checkpoint-final/unwrapped_model"
 
 TACTILE_DATA_ROOT = "/defaultShare/data_indoor"
 TACTILE_CSV_PATH = "contact_indoor_list_tvl.csv"

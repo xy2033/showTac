@@ -18,7 +18,7 @@ wandb:
 experiment:
     project: "showo2-tactile-stage-1"
     name: "showo2-1.5b-tactile-stage-1"
-    output_dir: "outputs/showo2-1.5b-tactile-stage-1_video"
+    output_dir: "outputs/showo2-1.5b-tactile-stage-1_force"
     output_dataloader_state_dir: null
     save_every: 3000
     generate_every: 3000
@@ -65,7 +65,7 @@ dataset:
     params:
         # === Tactile-Visual Data Paths (set via hyperparameters) ===
         tactile_data_root: "/defaultShare/data_indoor"
-        tactile_csv_path: "/Show-o/show-o2/contact_indoor_list_tvl.csv"
+        tactile_csv_path: "/18009672469/xy/Show-o/show-o2/contact_indoor_list_tvl.csv"
 
         # Number of frames to sample uniformly from each video
         num_frames: 5
