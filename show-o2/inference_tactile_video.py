@@ -153,7 +153,7 @@ def load_checkpoint_state_dict(weight_file):
     return torch.load(weight_file, map_location="cpu")
 
 
-def check_checkpoint_load(model, missing, unexpected, allow_partial=False, base_loaded=False):
+def check_checkpoint_load(model, missing, unexpected, allow_partial=False, base_loaded=False, motion_mode="baseline"):
     critical_prefixes = (
         "fusion_proj",
         "diffusion_head",
@@ -162,9 +162,20 @@ def check_checkpoint_load(model, missing, unexpected, allow_partial=False, base_
         "time_embed_proj",
         "image_embedder_gen",
     )
+    if motion_mode == "motion_condition":
+        critical_prefixes = critical_prefixes + (
+            "visual_motion_predictor",
+            "motion_token_encoder",
+            "motion_injection_logit",
+        )
     critical_missing = [
         key for key in missing
         if key.startswith(critical_prefixes)
+    ]
+    motion_prefixes = ("visual_motion_predictor", "motion_token_encoder", "motion_injection_logit")
+    non_motion_missing = [
+        key for key in missing
+        if not key.startswith(motion_prefixes)
     ]
     if critical_missing:
         print(f"  Critical missing keys: {critical_missing[:20]}")
@@ -185,7 +196,7 @@ def check_checkpoint_load(model, missing, unexpected, allow_partial=False, base_
             "Checkpoint has unexpected keys. "
             "Use --allow_partial_checkpoint only if you intentionally changed architecture."
         )
-    if not allow_partial and missing and not base_loaded:
+    if not allow_partial and non_motion_missing and not base_loaded:
         raise RuntimeError(
             "Checkpoint is missing keys and no base Show-o2 checkpoint was loaded. "
             "Pass --showo_path /path/to/show-o2-1.5B or use a full unwrapped_model checkpoint."
@@ -472,6 +483,7 @@ def run_single_inference(args, model, vae_model, text_tokenizer, showo_token_ids
         reverse=args.reverse,
         time_shifting_factor=args.time_shifting_factor,
         vae_deterministic=args.vae_deterministic,
+        motion_mode=args.motion_mode,
     )
 
     save_video_frames(generated, args.output_path, fps=args.fps)
@@ -541,6 +553,7 @@ def run_batch_test_inference(args, model, vae_model, text_tokenizer, showo_token
                     reverse=args.reverse,
                     time_shifting_factor=args.time_shifting_factor,
                     vae_deterministic=args.vae_deterministic,
+                    motion_mode=args.motion_mode,
                 )
                 save_video_frames(generated, output_path, fps=args.fps)
                 if args.save_conditions:
@@ -582,6 +595,7 @@ def generate_tactile_video(
         reverse: bool = False,
         time_shifting_factor: float = 3.0,
         vae_deterministic: bool = False,
+        motion_mode: str = "baseline",
 ):
     """
     基于文本 + 视觉视频条件生成触觉视频。
@@ -610,6 +624,11 @@ def generate_tactile_video(
         Generated tactile video frames as (T, C, H, W) tensor in [-1, 1].
     """
     model.eval()
+    motion_mode = motion_mode.strip().lower()
+    if motion_mode not in {"baseline", "aux_only", "motion_condition"}:
+        raise ValueError(f"Unsupported motion_mode: {motion_mode}")
+    if motion_mode == "motion_condition" and num_frames != 5:
+        raise ValueError("motion_condition inference requires --num_frames 5")
 
     # ---- 计算 token 数量 ----
     # The model consumes one extra position per visual region when add_time_embeds=True:
@@ -727,6 +746,7 @@ def generate_tactile_video(
         output_hidden_states=True,
         max_seq_len=actual_seq_len,
         guidance_scale=guidance_scale if guidance_scale > 0 else 0.0,
+        motion_mode=motion_mode,
         only_denoise_last_image=True,  # 只去噪触觉段 (最后一个视觉区域)
     )
 
@@ -837,6 +857,9 @@ def main():
     parser.add_argument("--time_embed_layout", type=str, default="auto",
                         choices=["auto", "with_time_token", "without_time_token"],
                         help="视频 token 段是否包含 time embedding 位置；auto 根据 checkpoint config 判断")
+    parser.add_argument("--motion_mode", type=str, default="baseline",
+                        choices=["baseline", "aux_only", "motion_condition"],
+                        help="阶段二 motion prior 模式；motion_condition 会从 visual 预测并注入 motion prior")
     parser.add_argument("--virtual_force_coeff", type=float, default=0.0,
                         help="训练阶段 virtual force proxy loss 系数；推理阶段仅用于记录/脚本兼容")
     parser.add_argument("--contact_weighted_flow_alpha", type=float, default=0.0,
@@ -861,6 +884,7 @@ def main():
     weight_type = torch.bfloat16
     print(
         "Inference provenance: "
+        f"motion_mode={args.motion_mode}, "
         f"virtual_force_coeff={args.virtual_force_coeff}, "
         f"contact_weighted_flow_alpha={args.contact_weighted_flow_alpha}"
     )
@@ -990,6 +1014,7 @@ def main():
         unexpected,
         allow_partial=args.allow_partial_checkpoint,
         base_loaded=base_loaded,
+        motion_mode=args.motion_mode,
     )
     del state_dict
 

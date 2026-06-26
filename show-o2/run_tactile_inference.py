@@ -25,7 +25,7 @@ os.environ["TRANSFORMERS_OFFLINE"] = "1"
 # =======================
 MODEL_ROOT = "/defaultShare/models"
 
-STAGE1_CHECKPOINT = "outputs/showo2-1.5b-tactile-stage-1_video/checkpoint-final/unwrapped_model"
+STAGE1_CHECKPOINT = "outputs/showo2-1.5b-tactile-stage-1_motion/checkpoint-6000/unwrapped_model"
 
 TACTILE_DATA_ROOT = "/defaultShare/data_indoor"
 TACTILE_CSV_PATH = "contact_indoor_list_tvl.csv"
@@ -44,6 +44,7 @@ TIME_SHIFTING_FACTOR = 3.0
 FPS = 2
 EVAL_SPLIT = "test"
 VAE_DETERMINISTIC = True
+MOTION_MODE = os.getenv("MOTION_MODE", "motion_condition")
 
 
 # =======================
@@ -76,6 +77,7 @@ args = [
     "--sampling_method", SAMPLING_METHOD,
     "--time_shifting_factor", str(TIME_SHIFTING_FACTOR),
     "--time_embed_layout", "auto",
+    "--motion_mode", MOTION_MODE,
     "--fps", str(FPS),
     "--save_conditions",
     "--showo_path", f"{MODEL_ROOT}/show-o2-1.5B",

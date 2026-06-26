@@ -65,53 +65,41 @@ from transport import Sampler, create_transport
 logger = get_logger(__name__, log_level="INFO")
 
 
-def compress_wan21_temporal_values(values: torch.Tensor, latent_frames: int) -> torch.Tensor:
-    """Match Wan2.1 VAE temporal grouping: first frame, then chunks of four."""
-    if values.shape[1] == latent_frames:
-        return values
-    chunks = [values[:, :1]]
-    cursor = 1
-    while len(chunks) < latent_frames:
-        if cursor >= values.shape[1]:
-            chunks.append(values[:, -1:].clone())
-        else:
-            chunks.append(values[:, cursor:cursor + 4].mean(dim=1, keepdim=True))
-            cursor += 4
-    return torch.cat(chunks, dim=1)
-
-
-def build_contact_flow_weights(
-        contact_gate: torch.Tensor,
-        modality_positions: torch.Tensor,
-        max_seq_len: int,
-        latent_frames: int,
-        tokens_per_latent_frame: int,
-        add_time_embeds: bool,
-        alpha: float,
-        device,
-        dtype,
-) -> torch.Tensor:
-    latent_gate = compress_wan21_temporal_values(contact_gate, latent_frames)
-    weights = torch.ones(
-        contact_gate.shape[0], max_seq_len,
-        device=device, dtype=dtype,
-    )
-    for i, modality_batch in enumerate(modality_positions):
-        offset, length = modality_batch[-1]
-        offset = int(offset.item())
-        length = int(length.item())
-        start = offset + int(add_time_embeds)
-        token_count = min(latent_frames * tokens_per_latent_frame, max(length - int(add_time_embeds), 0))
-        for frame_idx in range(latent_frames):
-            token_start = start + frame_idx * tokens_per_latent_frame
-            token_end = min(token_start + tokens_per_latent_frame, start + token_count)
-            weights[i, token_start:token_end] = 1.0 + alpha * latent_gate[i, frame_idx].to(dtype)
-    return weights
-
-
 def write_jsonl(path: Path, record: dict) -> None:
     with path.open("a", encoding="utf-8") as f:
         f.write(json.dumps(record, ensure_ascii=False) + "\n")
+
+
+def as_bool(value) -> bool:
+    if isinstance(value, str):
+        return value.strip().lower() in {"1", "true", "yes", "on"}
+    return bool(value)
+
+
+def check_motion_condition_grads(model) -> dict:
+    targets = {
+        "motion_grad/visual_motion_predictor": "visual_motion_predictor",
+        "motion_grad/motion_token_encoder": "motion_token_encoder",
+        "motion_grad/motion_injection_gate": "motion_injection_logit",
+    }
+    logs = {}
+    missing = []
+    for metric_name, name_part in targets.items():
+        grads = [
+            p.grad.detach().float().norm()
+            for name, p in model.named_parameters()
+            if name_part in name and p.requires_grad and p.grad is not None
+        ]
+        if not grads:
+            missing.append(metric_name)
+            continue
+        norm = torch.stack(grads).norm()
+        if not torch.isfinite(norm):
+            raise RuntimeError(f"non-finite gradient for {metric_name}: {norm.item()}")
+        logs[metric_name] = norm.item()
+    if missing:
+        raise RuntimeError(f"motion_condition missing gradients: {missing}")
+    return logs
 
 
 def main():
@@ -188,22 +176,41 @@ def main():
         logging.info(f"Saving config to {config_path}")
         OmegaConf.save(config, config_path)
 
-    virtual_force_coeff = float(config.training.get("virtual_force_coeff", 0.0))
-    contact_weighted_flow_alpha = float(config.training.get("contact_weighted_flow_alpha", 0.0))
-    contact_gate_m = float(config.training.get("contact_gate_m", 0.01))
-    contact_gate_s = float(config.training.get("contact_gate_s", 0.005))
-    compute_physics_targets = virtual_force_coeff > 0.0 or contact_weighted_flow_alpha > 0.0
+    motion_aux_config = config.get("motion_aux", {})
+    motion_aux_enabled = as_bool(motion_aux_config.get("enabled", False))
+    motion_mode = str(motion_aux_config.get("mode", "motion_condition")).strip().lower()
+    if not motion_aux_enabled:
+        motion_mode = "baseline"
+    if motion_mode not in {"baseline", "aux_only", "motion_condition"}:
+        raise ValueError(f"Unsupported motion_aux.mode: {motion_mode}")
+    if motion_mode != "baseline" and int(config.dataset.params.num_frames) != 5:
+        raise ValueError(f"{motion_mode} requires dataset.params.num_frames=5")
+    config.model.showo.motion_mode = motion_mode
+    motion_aux_coeff = float(motion_aux_config.get("coeff", 0.0))
+    motion_use_contact_mask = as_bool(motion_aux_config.get("use_contact_mask", True))
+    motion_contact_threshold_mode = str(motion_aux_config.get("contact_threshold_mode", "window_percentile"))
+    motion_contact_k = float(motion_aux_config.get("contact_k", 3.0))
+    motion_contact_percentile = float(motion_aux_config.get("contact_percentile", 96.0))
+    motion_max = float(motion_aux_config.get("motion_max", 32.0))
+    motion_gamma = float(motion_aux_config.get("motion_gamma", 0.5))
+    compute_motion_aux = motion_mode != "baseline" and motion_aux_coeff > 0.0
     idea_records_dir = Path(config.experiment.output_dir) / "idea_records"
     idea_metrics_path = idea_records_dir / "train_metrics.jsonl"
     if accelerator.is_main_process:
         idea_records_dir.mkdir(parents=True, exist_ok=True)
         idea_config = {
-            "virtual_force_coeff": virtual_force_coeff,
-            "contact_weighted_flow_alpha": contact_weighted_flow_alpha,
-            "contact_gate_m": contact_gate_m,
-            "contact_gate_s": contact_gate_s,
+            "motion_aux_enabled": motion_aux_enabled,
+            "motion_mode": motion_mode,
+            "motion_aux_coeff": motion_aux_coeff,
+            "compute_motion_aux": compute_motion_aux,
+            "motion_use_contact_mask": motion_use_contact_mask,
+            "motion_contact_threshold_mode": motion_contact_threshold_mode,
+            "motion_contact_k": motion_contact_k,
+            "motion_contact_percentile": motion_contact_percentile,
+            "motion_max": motion_max,
+            "motion_gamma": motion_gamma,
             "reference_frame": "gelsight/0.png",
-            "flow_method": "cv2.calcOpticalFlowFarneback_rgb_channel_mean",
+            "target_method": "contact-aware diff motion map, on-the-fly pair2 stride=2, no VAE encoding",
         }
         (idea_records_dir / "idea_config.json").write_text(
             json.dumps(idea_config, ensure_ascii=False, indent=2),
@@ -384,9 +391,13 @@ def main():
         frame_split_mode="contact_90_10",
         showo_token_ids=showo_token_ids,
         min_res=preproc_config.min_res,
-        compute_physics_targets=compute_physics_targets,
-        contact_gate_m=contact_gate_m,
-        contact_gate_s=contact_gate_s,
+        motion_enabled=compute_motion_aux,
+        use_contact_mask=motion_use_contact_mask,
+        motion_contact_threshold_mode=motion_contact_threshold_mode,
+        motion_contact_k=motion_contact_k,
+        motion_contact_percentile=motion_contact_percentile,
+        motion_max=motion_max,
+        motion_gamma=motion_gamma,
     )
     train_dataloader_tactile = create_dataloader(
         dataset, config.training.batch_size_tactile, dataset.collate_fn
@@ -560,6 +571,7 @@ def main():
     batch_time_m = AverageMeter()
     data_time_m = AverageMeter()
     end = time.time()
+    printed_motion_aux_stats = False
 
     for epoch in range(first_epoch, num_train_epochs):
         model.train()
@@ -596,27 +608,30 @@ def main():
                 * (image_latents.shape[-1] // config.model.showo.patch_size)
             )
 
-            image_loss_weights = None
-            contact_gate = batch.get('contact_gate', None)
-            if contact_weighted_flow_alpha > 0.0 and contact_gate is not None:
-                image_loss_weights = build_contact_flow_weights(
-                    contact_gate.to(accelerator.device),
-                    modality_positions,
-                    text_tokens.size(1),
-                    latent_frames_t,
-                    tokens_per_latent_frame,
-                    bool(config.model.showo.add_time_embeds),
-                    contact_weighted_flow_alpha,
-                    accelerator.device,
-                    weight_type,
-                )
-
-            virtual_force_targets = None
-            if virtual_force_coeff > 0.0 and batch.get('virtual_force', None) is not None:
-                virtual_force_targets = compress_wan21_temporal_values(
-                    batch['virtual_force'].to(accelerator.device),
-                    latent_frames_t,
-                ).to(weight_type)
+            motion_targets = None
+            motion_mask = None
+            if compute_motion_aux:
+                if batch.get('motion_targets', None) is None or batch.get('motion_mask', None) is None:
+                    raise ValueError("motion_aux is enabled but batch has no motion_targets/motion_mask.")
+                motion_targets = batch['motion_targets'].to(accelerator.device, dtype=weight_type)
+                motion_mask = batch['motion_mask'].to(accelerator.device, dtype=weight_type)
+                if motion_targets.shape[1:] != (latent_frames_t, preproc_config.latent_height, preproc_config.latent_width):
+                    raise ValueError(
+                        f"motion_targets shape {motion_targets.shape} does not match "
+                        f"(B,{latent_frames_t},{preproc_config.latent_height},{preproc_config.latent_width})"
+                    )
+                motion_targets = motion_targets.reshape(b, latent_frames_t * tokens_per_latent_frame, 1)
+                motion_mask = motion_mask.reshape(b, latent_frames_t * tokens_per_latent_frame, 1)
+                if not printed_motion_aux_stats and accelerator.is_main_process:
+                    accelerator.print(
+                        "motion_aux batch stats: "
+                        f"targets_shape={tuple(motion_targets.shape)} "
+                        f"target_min={motion_targets.float().min().item():.4f} "
+                        f"target_max={motion_targets.float().max().item():.4f} "
+                        f"target_mean={motion_targets.float().mean().item():.4f} "
+                        f"mask_mean={motion_mask.float().mean().item():.4f}"
+                    )
+                    printed_motion_aux_stats = True
 
             # Create omni-attention mask
             block_mask = omni_attn_mask_naive(
@@ -634,31 +649,41 @@ def main():
                 image_masks=image_masks,
                 text_labels=text_labels,
                 image_labels=image_labels,
-                image_loss_weights=image_loss_weights,
-                virtual_force_targets=virtual_force_targets,
+                motion_targets=motion_targets,
+                motion_mask=motion_mask,
                 modality_positions=modality_positions,
+                motion_mode=motion_mode,
+                return_motion_stats=True,
                 output_hidden_states=True,
                 max_seq_len=text_tokens.size(1),
                 device=accelerator.device,
             )
-            if virtual_force_targets is not None:
-                logits, loss_ntp, loss_flow, loss_force, force_pred = model_outputs
+            if motion_targets is not None:
+                logits, loss_ntp, loss_flow, loss_motion_aux, motion_pred, motion_stats = model_outputs
             else:
                 logits, loss_ntp, loss_flow = model_outputs
-                loss_force = loss_flow.detach() * 0.0
-                force_pred = None
+                loss_motion_aux = loss_flow.detach() * 0.0
+                motion_pred = None
+                motion_stats = {}
 
             # Gather losses
             avg_loss_ntp = accelerator.gather(loss_ntp.repeat(total_batch_size_per_gpu)).mean()
             avg_loss_flow = accelerator.gather(loss_flow.repeat(total_batch_size_per_gpu)).mean()
-            avg_loss_force = accelerator.gather(loss_force.repeat(total_batch_size_per_gpu)).mean()
+            avg_loss_motion_aux = accelerator.gather(loss_motion_aux.repeat(total_batch_size_per_gpu)).mean()
             loss = (
                     config.training.ntp_coeff * loss_ntp
                     + config.training.flow_coeff * loss_flow
-                    + virtual_force_coeff * loss_force
+                    + motion_aux_coeff * loss_motion_aux
             )
 
             accelerator.backward(loss.to(weight_type) / config.training.gradient_accumulation_steps)
+            motion_grad_logs = {}
+            if (
+                    motion_mode == "motion_condition"
+                    and accelerator.sync_gradients
+                    and (global_step + 1) % config.experiment.log_every == 0
+            ):
+                motion_grad_logs = check_motion_condition_grads(model)
 
             if config.training.max_grad_norm is not None and accelerator.sync_gradients:
                 accelerator.clip_grad_norm_(model.parameters(), config.training.max_grad_norm)
@@ -691,23 +716,40 @@ def main():
                     logs = {
                         "step_loss_ntp": avg_loss_ntp.item(),
                         "step_loss_flow": avg_loss_flow.item(),
-                        "step_loss_virtual_force": avg_loss_force.item(),
+                        "step_loss_motion_aux": avg_loss_motion_aux.item(),
+                        "motion_loss": avg_loss_motion_aux.item(),
+                        "step_loss_total": loss.detach().float().item(),
                         "lr": lr[0],
                         "samples/sec/gpu": samples_per_second_per_gpu,
                         "data_time": data_time_m.val,
                         "batch_time": batch_time_m.val,
                     }
-                    if contact_gate is not None:
-                        logs["contact_gate_mean"] = contact_gate.float().mean().item()
-                    if image_loss_weights is not None:
-                        logs["contact_flow_weight_mean"] = image_loss_weights.float().mean().item()
-                    if batch.get('virtual_force', None) is not None:
-                        logs["virtual_force_norm"] = batch['virtual_force'].float().norm(dim=-1).mean().item()
-                    if force_pred is not None:
-                        logs["virtual_force_pred_norm"] = force_pred.detach().float().norm(dim=-1).mean().item()
+                    if motion_targets is not None:
+                        logs["motion_mask_ratio"] = motion_mask.float().mean().item()
+                        logs["motion_target_min"] = motion_targets.float().min().item()
+                        logs["motion_target_max"] = motion_targets.float().max().item()
+                        logs["motion_target_mean"] = motion_targets.float().mean().item()
+                    if motion_pred is not None:
+                        logs["motion_pred_mean"] = motion_pred.detach().float().mean().item()
+                        logs["motion_pred_abs_mean"] = motion_pred.detach().float().abs().mean().item()
+                        logs["motion_prior_mean"] = logs["motion_pred_mean"]
+                        logs["motion_prior_abs_mean"] = logs["motion_pred_abs_mean"]
+                        if motion_mask is not None:
+                            mask_bool = motion_mask.detach().bool()
+                            pred_abs = motion_pred.detach().float().abs()
+                            logs["motion_inside_abs_mean"] = (
+                                pred_abs[mask_bool].mean().item() if mask_bool.any() else 0.0
+                            )
+                            outside = ~mask_bool
+                            logs["motion_outside_abs_mean"] = (
+                                pred_abs[outside].mean().item() if outside.any() else 0.0
+                            )
+                    for key, value in motion_stats.items():
+                        logs[key] = value.detach().float().item()
+                    logs.update(motion_grad_logs)
                     accelerator.log(logs, step=global_step + 1)
                     if accelerator.is_main_process:
-                        record = {"step": global_step + 1, **logs}
+                        record = {"step": global_step + 1, "motion_mode": motion_mode, **logs}
                         if batch.get('object_names', None):
                             record["object_name"] = batch['object_names'][0]
                         if batch.get('frame_indices', None) is not None:
@@ -717,7 +759,7 @@ def main():
                         f"Epoch: {epoch} Step: {global_step + 1} "
                         f"Loss_NTP: {avg_loss_ntp.item():0.4f} "
                         f"Loss_FLOW: {avg_loss_flow.item():0.4f} "
-                        f"Loss_FORCE: {avg_loss_force.item():0.4f} "
+                        f"Loss_MOTION: {avg_loss_motion_aux.item():0.4f} "
                         f"Data (t): {data_time_m.val:0.4f}, {samples_per_second_per_gpu:0.2f}/s/gpu "
                         f"Batch (t): {batch_time_m.val:0.4f} LR: {lr[0]:0.6f}"
                     )
@@ -956,6 +998,9 @@ def generate_tactile_samples(
             text_tokens=text_tokens,
             attention_mask=block_mask,
             modality_positions=modality_positions,
+            motion_mode=str(config.get("motion_aux", {}).get("mode", "baseline")).strip().lower()
+            if as_bool(config.get("motion_aux", {}).get("enabled", False))
+            else "baseline",
             output_hidden_states=True,
             max_seq_len=text_tokens.size(1),
             guidance_scale=guidance_scale,

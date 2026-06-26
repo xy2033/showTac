@@ -37,6 +37,7 @@ from PIL import Image
 from torch.utils.data import Dataset
 
 from datasets.utils import image_transform, format_sequence_tactile_gen
+from datasets.tactile_motion import compute_motion_targets
 
 
 class TactileVisualDataset(Dataset):
@@ -71,9 +72,13 @@ class TactileVisualDataset(Dataset):
             showo_token_ids: Optional[Dict[str, int]] = None,
             min_res: Optional[Tuple[int, int]] = None,
             clip_image_size: int = 384,
-            compute_physics_targets: bool = False,
-            contact_gate_m: float = 0.01,
-            contact_gate_s: float = 0.005,
+            motion_enabled: bool = False,
+            use_contact_mask: bool = True,
+            motion_contact_threshold_mode: str = "window_percentile",
+            motion_contact_k: float = 3.0,
+            motion_contact_percentile: float = 96.0,
+            motion_max: float = 32.0,
+            motion_gamma: float = 0.5,
     ) -> None:
         """
         Args:
@@ -136,12 +141,21 @@ class TactileVisualDataset(Dataset):
         self.clip_image_size = clip_image_size
         self.clip_mean = (0.5, 0.5, 0.5)
         self.clip_std = (0.5, 0.5, 0.5)
-        self.compute_physics_targets = compute_physics_targets
-        self.contact_gate_m = contact_gate_m
-        self.contact_gate_s = contact_gate_s
+        self.motion_enabled = motion_enabled
+        self.use_contact_mask = use_contact_mask
+        self.motion_contact_threshold_mode = motion_contact_threshold_mode
+        self.motion_contact_k = motion_contact_k
+        self.motion_contact_percentile = motion_contact_percentile
+        self.motion_max = motion_max
+        self.motion_gamma = motion_gamma
+        self._background_cache: Dict[str, np.ndarray] = {}
 
         if self.frame_split_mode not in {"legacy", "contact_90_10"}:
             raise ValueError(f"Unsupported frame_split_mode: {self.frame_split_mode}")
+        if self.h * self.w != self.num_tactile_tokens_per_frame:
+            raise ValueError(
+                f"latent grid {self.h}x{self.w} != tactile tokens/frame {self.num_tactile_tokens_per_frame}"
+            )
 
         # 4 for bos, eos, bov (x2), eov (x2)
         self.max_text_len = max_seq_len - self.num_visual_tokens - self.num_tactile_tokens - 6
@@ -400,57 +414,58 @@ class TactileVisualDataset(Dataset):
             processed.append(frame_tensor)
         return torch.stack(processed, dim=0)  # (T, C, H, W)
 
-    @staticmethod
-    def _pil_to_rgb_array(frame: Image.Image) -> np.ndarray:
+    def _frame_to_array(self, frame: "Image.Image") -> np.ndarray:
+        """Match training/diagnostic resize + center crop for motion compute."""
+        width, height = frame.size
+        if width < height:
+            new_width = self.image_size
+            new_height = int(round(height * self.image_size / width))
+        else:
+            new_height = self.image_size
+            new_width = int(round(width * self.image_size / height))
+        if (new_width, new_height) != frame.size:
+            resample = getattr(Image, "Resampling", Image).BICUBIC
+            frame = frame.resize((new_width, new_height), resample)
+        left = max((new_width - self.image_size) // 2, 0)
+        top = max((new_height - self.image_size) // 2, 0)
+        frame = frame.crop((left, top, left + self.image_size, top + self.image_size))
         return np.asarray(frame.convert("RGB"), dtype=np.float32)
 
-    @staticmethod
-    def _safe_flow_mean(value: np.ndarray, limit: float = 100.0) -> float:
-        value = np.nan_to_num(value, nan=0.0, posinf=limit, neginf=-limit)
-        return float(np.clip(value.mean(), -limit, limit))
-
-    def _load_no_contact_reference(self, tactile_dir: str) -> Image.Image:
-        return Image.open(os.path.join(tactile_dir, "0.png")).convert("RGB")
-
-    def _compute_virtual_force_and_contact_gate(
-            self,
-            tactile_dir: str,
-            tactile_frames: List[Image.Image],
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
-        import cv2
-
-        ref_rgb = self._pil_to_rgb_array(self._load_no_contact_reference(tactile_dir))
-        force_values = []
-        for frame in tactile_frames:
-            cur_rgb = self._pil_to_rgb_array(frame)
-            channel_forces = []
-            for channel in range(3):
-                flow = cv2.calcOpticalFlowFarneback(
-                    ref_rgb[..., channel], cur_rgb[..., channel], None,
-                    0.5, 3, 15, 3, 5, 1.2, 0,
+    def _load_background(self, sample: Dict[str, Any]) -> np.ndarray:
+        """Load and cache the no-contact reference frame (gelsight/0.png) per object."""
+        obj = sample["object_name"]
+        if obj not in self._background_cache:
+            bg_path = os.path.join(sample["tactile_dir"], "0.png")
+            if not os.path.exists(bg_path):
+                raise FileNotFoundError(
+                    f"motion_enabled requires no-contact reference {bg_path} (gelsight/0.png)."
                 )
-                flow = np.nan_to_num(flow, nan=0.0, posinf=100.0, neginf=-100.0)
-                ux = flow[..., 0]
-                uy = flow[..., 1]
-                div_u = np.gradient(ux, axis=1) + np.gradient(uy, axis=0)
-                channel_forces.append([
-                    self._safe_flow_mean(ux),
-                    self._safe_flow_mean(uy),
-                    self._safe_flow_mean(div_u),
-                ])
-            force_values.append(np.asarray(channel_forces, dtype=np.float32).mean(axis=0).tolist())
+            self._background_cache[obj] = self._frame_to_array(Image.open(bg_path).convert("RGB"))
+        return self._background_cache[obj]
 
-        rgb_frames = [self._pil_to_rgb_array(frame) for frame in tactile_frames]
-        rho = np.zeros(len(rgb_frames), dtype=np.float32)
-        if len(rgb_frames) > 0:
-            rho[0] = np.mean(np.abs(rgb_frames[0] - ref_rgb)) / 255.0
-        for i in range(1, len(rgb_frames)):
-            rho[i] = np.mean(np.abs(rgb_frames[i] - rgb_frames[i - 1])) / 255.0
-        gate = 1.0 / (1.0 + np.exp(-(rho - self.contact_gate_m) / self.contact_gate_s))
-
+    def _load_motion_targets(
+        self, sample: Dict[str, Any], tactile_frames: List["Image.Image"]
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Compute (2,27,27) diff-motion targets + masks on-the-fly from the 5 frames."""
+        if len(tactile_frames) != 5:
+            raise ValueError(f"motion targets expect 5 frames, got {len(tactile_frames)}")
+        frames_5 = np.stack([self._frame_to_array(f) for f in tactile_frames], axis=0)
+        background = self._load_background(sample)
+        motion, mask = compute_motion_targets(
+            frames_5,
+            background,
+            target_h=self.h,
+            target_w=self.w,
+            contact_threshold_mode=self.motion_contact_threshold_mode,
+            contact_k=self.motion_contact_k,
+            contact_percentile=self.motion_contact_percentile,
+            motion_max=self.motion_max,
+            motion_gamma=self.motion_gamma,
+            use_contact_mask=self.use_contact_mask,
+        )
         return (
-            torch.tensor(force_values, dtype=torch.float32),
-            torch.tensor(gate, dtype=torch.float32),
+            torch.tensor(motion, dtype=torch.float32),
+            torch.tensor(mask, dtype=torch.float32),
         )
 
     def __len__(self) -> int:
@@ -513,16 +528,16 @@ class TactileVisualDataset(Dataset):
                 'frame_indices': torch.tensor(selected_indices, dtype=torch.long),
                 'data_type': self.data_type,
             }
-            if self.compute_physics_targets:
-                virtual_force, contact_gate = self._compute_virtual_force_and_contact_gate(
-                    sample["tactile_dir"], tactile_frames
-                )
-                item['virtual_force'] = virtual_force
-                item['contact_gate'] = contact_gate
+            if self.motion_enabled:
+                motion_targets, motion_mask = self._load_motion_targets(sample, tactile_frames)
+                item['motion_targets'] = motion_targets
+                item['motion_mask'] = motion_mask
             return item
 
         except Exception as e:
             print(f"Error loading sample {idx}: {e}")
+            if self.motion_enabled:
+                raise
             return self.__getitem__((idx + 1) % len(self.samples))
 
     def collate_fn(self, batch: List[Dict[str, Any]]) -> Dict[str, Any]:

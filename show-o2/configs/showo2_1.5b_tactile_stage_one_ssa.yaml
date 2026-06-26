@@ -18,27 +18,28 @@ wandb:
 experiment:
     project: "showo2-tactile-stage-1"
     name: "showo2-1.5b-tactile-stage-1"
-    output_dir: "outputs/showo2-1.5b-tactile-stage-1"
+    output_dir: "outputs/showo2-1.5b-tactile-stage-1_motion_ssa"
     output_dataloader_state_dir: null
-    save_every: 2000
-    generate_every: 1000
+    save_every: 3000
+    generate_every: 3000
+    generate_model_samples: True              # 同 generate_every 频率，额外生成触觉序列检查整体模型效果
     log_every: 20
     log_grad_norm_every: 500
-    resume_from_checkpoint: 'False'
-    checkpoints_total_limit: 5
+    resume_from_checkpoint: False
+    checkpoints_total_limit: 1
 
 model:
     vae_model:
         type: "wan21"
         # 集群本地路径，启动脚本会通过命令行覆盖
-        pretrained_model_path: "/15584226882/Show-o/models/Wan2.1_VAE.pth"
+        pretrained_model_path: "/defaultShare/models/Wan2.1_VAE.pth"
 
     showo:
         model_name: "Showo2"
-        load_from_showo: False              # 直接构建模型（使用CLI覆盖的本地路径），而非 from_pretrained
+        load_from_showo: True              # 直接构建模型（使用CLI覆盖的本地路径），而非 from_pretrained
         # 预训练权重本地路径（用于 load_state_dict 加载）
-        pretrained_model_path: "/15584226882/Show-o/models/show-o2-1.5B"
-        llm_model_path: "/15584226882/Show-o/models/Qwen2.5-1.5B-Instruct"
+        pretrained_model_path: "/defaultShare/models/show-o2-1.5B"
+        llm_model_path: "/defaultShare/models/Qwen2.5-1.5B-Instruct"
         llm_vocab_size: null               # auto-set from tokenizer
         hidden_size: 1536
         image_latent_dim: 16
@@ -50,7 +51,7 @@ model:
         add_qk_norm: True
         add_time_embeds: True
         # SigLIP 路径放在 showo 下，因为 __init__ 签名是 clip_pretrained_model_path
-        clip_pretrained_model_path: "/15584226882/Show-o/models/siglip-so400m-patch14-384"
+        clip_pretrained_model_path: "/defaultShare/models/siglip-so400m-patch14-384"
         # Stage 1: freeze LLM + semantic layers, train fusion + diffusion
         frozen_params: ['image_embedder_und', 'und_trans', 'showo', 'position_embedding']
         params_not_load: null
@@ -63,8 +64,8 @@ dataset:
     mixed_loader_mode: "max_size_cycle"
     params:
         # === Tactile-Visual Data Paths (set via hyperparameters) ===
-        tactile_data_root: "/media/xy/Elements/tac/tacquad_gelsight_img/data_indoor"
-        tactile_csv_path: "/media/xy/Elements/tac/tacquad_gelsight_img/contact_indoor_list_tvl.csv"
+        tactile_data_root: "/defaultShare/data_indoor"
+        tactile_csv_path: "/18009672469/xy/Show-o/show-o2/contact_indoor_list_tvl.csv"
 
         # Number of frames to sample uniformly from each video
         num_frames: 5
@@ -139,3 +140,14 @@ training:
     ntp_coeff: 0.0                           # No NTP loss — all -100 labels, flow only
     flow_coeff: 1.0                          # Flow matching loss on tactile segment only
     und_max_t0: 1.0
+
+motion_aux:
+    enabled: true              # 消融主开关；false 退化为纯 flow matching baseline
+    mode: motion_condition     # baseline / aux_only / motion_condition
+    coeff: 0.5                  # motion aux loss 权重，建议扫 0.25/0.5/1.0
+    use_contact_mask: true      # 接触感知双重门控（核心创新点）；false 用全 1 mask 做消融
+    contact_threshold_mode: window_percentile  # 默认用当前 5 帧窗口 p96，贴近 Task1 object p96 覆盖率
+    contact_percentile: 96.0     # 若 mask 仍偏宽，下一档只调到 97.0
+    contact_k: 3.0              # 仅 contact_threshold_mode=mad 时生效
+    motion_max: 32.0            # 运动幅值归一化尺度
+    motion_gamma: 0.5           # 幅值压缩 gamma

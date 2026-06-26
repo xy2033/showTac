@@ -52,7 +52,7 @@ from transport import Sampler, create_transport
 
 logger = get_logger(__name__, log_level="INFO")
 
-三
+
 def main():
     #########################
     # SETUP Accelerator     #

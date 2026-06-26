@@ -47,6 +47,7 @@ class Showo2Qwen2_5(ModelMixin, ConfigMixin):
             num_diffusion_layers=10,
             add_time_embeds=True,
             add_qk_norm=False,
+            motion_mode="baseline",
             clip_pretrained_model_path="google/siglip-so400m-patch14-384",
             **kwargs,
     ):
@@ -104,9 +105,20 @@ class Showo2Qwen2_5(ModelMixin, ConfigMixin):
              range(num_diffusion_layers)]
         )
         self.diffusion_head_b = FinalLayer(self.diffusion_head_config.hidden_size, patch_size, image_latent_dim)
-        self.tactile_force_head = nn.Sequential(
+        self.visual_motion_predictor = nn.Sequential(
+            RMSNorm(hidden_size),
+            nn.Linear(hidden_size, 1),
+        )
+        self.motion_token_encoder = nn.Sequential(
+            nn.Linear(1, self.diffusion_head_config.hidden_size),
+            nn.GELU(),
+            nn.Linear(self.diffusion_head_config.hidden_size, self.diffusion_head_config.hidden_size),
+        )
+        self.motion_injection_logit = nn.Parameter(torch.tensor(-4.0))
+        # Kept only so older checkpoints that include this module still load cleanly.
+        self.tactile_motion_head = nn.Sequential(
             RMSNorm(self.diffusion_head_config.hidden_size),
-            nn.Linear(self.diffusion_head_config.hidden_size, 3),
+            nn.Linear(self.diffusion_head_config.hidden_size, 1),
         )
 
         self.reset_parameters()
@@ -135,7 +147,9 @@ class Showo2Qwen2_5(ModelMixin, ConfigMixin):
         _basic_init(self.und_trans)
         _basic_init(self.fusion_proj)
         _basic_init(self.diffusion_head_a)
-        _basic_init(self.tactile_force_head)
+        _basic_init(self.visual_motion_predictor)
+        _basic_init(self.motion_token_encoder)
+        _basic_init(self.tactile_motion_head)
 
         # Initialize timestep embedding MLP
         nn.init.normal_(self.time_embed.mlp[0].weight, std=0.02)
@@ -146,8 +160,58 @@ class Showo2Qwen2_5(ModelMixin, ConfigMixin):
         nn.init.constant_(self.diffusion_head_b.adaLN_modulation[-1].bias, 0)
         nn.init.constant_(self.diffusion_head_b.linear.weight, 0)
         nn.init.constant_(self.diffusion_head_b.linear.bias, 0)
-        nn.init.constant_(self.tactile_force_head[-1].weight, 0)
-        nn.init.constant_(self.tactile_force_head[-1].bias, 0)
+        nn.init.constant_(self.tactile_motion_head[-1].weight, 0)
+        nn.init.constant_(self.tactile_motion_head[-1].bias, 0)
+
+    def _stage2_motion(self, image_embeds, hidden_states, modality_positions, T, h_, w_, motion_mode):
+        if motion_mode not in {"baseline", "aux_only", "motion_condition"}:
+            raise ValueError(f"Unsupported motion_mode: {motion_mode}")
+        if motion_mode == "baseline":
+            return None, hidden_states, {}
+        if T != 2:
+            raise ValueError(f"{motion_mode} expects 5 raw frames -> 2 latent frames, got latent T={T}")
+
+        token_count = T * h_ * w_
+        segment_count = modality_positions.size(1)
+        visual_tokens = []
+        tactile_slices = []
+        for i, modality_batch in enumerate(modality_positions):
+            visual_tokens.append(image_embeds[i * segment_count, :token_count])
+            offset, length = modality_batch[-1]
+            offset = int(offset.item())
+            length = int(length.item())
+            start = offset + int(self.config.add_time_embeds)
+            length = min(token_count, max(length - int(self.config.add_time_embeds), 0))
+            tactile_slices.append((i, start, start + length))
+
+        visual_tokens = torch.stack(visual_tokens, dim=0)
+        motion_pred = self.visual_motion_predictor(visual_tokens)
+        motion_tokens = self.motion_token_encoder(motion_pred)
+        gate = torch.sigmoid(self.motion_injection_logit)
+
+        before = []
+        after = []
+        if motion_mode == "motion_condition":
+            hidden_states = hidden_states.clone()
+        for i, start, end in tactile_slices:
+            before_hidden = hidden_states[i, start:end]
+            if before_hidden.numel() == 0:
+                raise ValueError("empty tactile segment for motion injection")
+            before.append(before_hidden.detach().float().norm(dim=-1).mean())
+            if motion_mode == "motion_condition":
+                conditioned = before_hidden + gate.to(before_hidden.dtype) * motion_tokens[i, :end - start]
+                hidden_states[i, start:end] = conditioned
+                after.append(conditioned.detach().float().norm(dim=-1).mean())
+            else:
+                after.append(before[-1])
+
+        stats = {
+            "motion_gate": gate.detach().float(),
+            "motion_tokens_norm": motion_tokens.detach().float().norm(dim=-1).mean(),
+            "tactile_hidden_norm_before": torch.stack(before).mean(),
+            "tactile_hidden_norm_after": torch.stack(after).mean(),
+        }
+        return motion_pred, hidden_states, stats
 
     def selective_next_token_prediction(self, hidden_states, labels):
         shifted_hidden_states = hidden_states[:, :-1, :]
@@ -187,8 +251,8 @@ class Showo2Qwen2_5(ModelMixin, ConfigMixin):
             text_labels=None,
             image_labels=None,
             image_loss_weights=None,
-            virtual_force_targets=None,
-            virtual_force_loss_weights=None,
+            motion_targets=None,
+            motion_mask=None,
             modality_positions=None,
             output_hidden_states=True,
             max_seq_len=None,
@@ -285,12 +349,14 @@ class Showo2Qwen2_5(ModelMixin, ConfigMixin):
             text_labels=None,
             image_labels=None,
             image_loss_weights=None,
-            virtual_force_targets=None,
-            virtual_force_loss_weights=None,
+            motion_targets=None,
+            motion_mask=None,
             modality_positions=None,
             first_frame_as_cond=False,
             only_denoise_last_image=False,
             guidance_scale=0.0,
+            motion_mode=None,
+            return_motion_stats=False,
             output_hidden_states=True,
             max_seq_len=None,
             device='cuda:0',
@@ -303,6 +369,7 @@ class Showo2Qwen2_5(ModelMixin, ConfigMixin):
             return logits
         else:
             # multimoidal understanding and generatiopn
+            motion_mode = motion_mode or getattr(self.config, "motion_mode", "baseline")
             input_embeds = self.showo.model.embed_tokens(text_tokens)
             dtype = input_embeds.dtype
             if len(image_latents.shape) != 4:
@@ -407,13 +474,22 @@ class Showo2Qwen2_5(ModelMixin, ConfigMixin):
             logits = None
 
             qwen_hidden_states = last_hidden_states
-            if text_labels is not None and image_labels is None and virtual_force_targets is None:
+            if text_labels is not None and image_labels is None and motion_targets is None:
                 loss_ntp, logits = self.selective_next_token_prediction(qwen_hidden_states, text_labels)
                 return logits, loss_ntp
 
             # diffusion head to predict vector fields
             if hasattr(self, 'diff_proj'):
                 last_hidden_states = self.diff_proj(last_hidden_states)
+            motion_pred, last_hidden_states, motion_stats = self._stage2_motion(
+                image_embeds,
+                last_hidden_states,
+                modality_positions,
+                T,
+                h_,
+                w_,
+                motion_mode,
+            )
             position_ids = torch.arange(last_hidden_states.shape[1], device=last_hidden_states.device).unsqueeze(0)
             for layer in self.diffusion_head_a:
                 last_hidden_states = layer(hidden_states=last_hidden_states,
@@ -424,32 +500,17 @@ class Showo2Qwen2_5(ModelMixin, ConfigMixin):
                                            )[0]
             v_pred = self.diffusion_head_b(last_hidden_states, time_embeds, modality_positions)
 
-            loss_force = None
-            force_pred = None
-            if virtual_force_targets is not None:
-                tactile_hidden = []
-                tokens_per_frame = h_ * w_
-                for i, modality_batch in enumerate(modality_positions):
-                    # Stage-1 tactile layout is fixed as [visual_condition, tactile_target].
-                    offset, length = modality_batch[-1]
-                    offset = int(offset.item())
-                    length = int(length.item())
-                    start = offset + int(self.config.add_time_embeds)
-                    token_count = min(T * tokens_per_frame, max(length - int(self.config.add_time_embeds), 0))
-                    frame_hidden = last_hidden_states[i, start:start + token_count]
-                    frame_hidden = frame_hidden.reshape(T, tokens_per_frame, -1).mean(dim=1)
-                    tactile_hidden.append(frame_hidden)
-                force_pred = self.tactile_force_head(torch.stack(tactile_hidden, dim=0))
-                force_loss = F.mse_loss(
-                    force_pred,
-                    virtual_force_targets.to(device=force_pred.device, dtype=force_pred.dtype),
-                    reduction='none',
-                ).mean(dim=-1)
-                if virtual_force_loss_weights is not None:
-                    force_loss = force_loss * virtual_force_loss_weights.to(
-                        device=force_loss.device, dtype=force_loss.dtype
-                    )
-                loss_force = force_loss.mean()
+            loss_motion_aux = None
+            if motion_targets is not None and motion_pred is not None:
+                motion_targets = motion_targets.to(device=motion_pred.device, dtype=motion_pred.dtype)
+                if motion_pred.shape != motion_targets.shape:
+                    raise ValueError(f"motion_pred shape {motion_pred.shape} != motion_targets shape {motion_targets.shape}")
+                mse = F.mse_loss(motion_pred, motion_targets, reduction='none')
+                if motion_mask is not None:
+                    motion_mask = motion_mask.to(device=motion_pred.device, dtype=motion_pred.dtype)
+                    loss_motion_aux = (mse * motion_mask).sum() / (motion_mask.sum() + 1e-8)
+                else:
+                    loss_motion_aux = mse.mean()
 
             # [:v_pred.shape[0]] is the valid image labels (special case for interleaved data training)
             if text_labels is not None and image_labels is not None:
@@ -460,8 +521,10 @@ class Showo2Qwen2_5(ModelMixin, ConfigMixin):
                     image_masks,
                     loss_weight=image_loss_weights,
                 )
-                if loss_force is not None:
-                    return logits, loss_ntp, loss_flow, loss_force, force_pred
+                if loss_motion_aux is not None:
+                    if return_motion_stats:
+                        return logits, loss_ntp, loss_flow, loss_motion_aux, motion_pred, motion_stats
+                    return logits, loss_ntp, loss_flow, loss_motion_aux, motion_pred
                 return logits, loss_ntp, loss_flow
 
             elif image_labels is not None:
@@ -471,8 +534,10 @@ class Showo2Qwen2_5(ModelMixin, ConfigMixin):
                     image_masks,
                     loss_weight=image_loss_weights,
                 )
-                if loss_force is not None:
-                    return logits, loss_flow, loss_force, force_pred
+                if loss_motion_aux is not None:
+                    if return_motion_stats:
+                        return logits, loss_flow, loss_motion_aux, motion_pred, motion_stats
+                    return logits, loss_flow, loss_motion_aux, motion_pred
                 return logits, loss_flow
 
             elif text_labels is not None:
@@ -549,6 +614,7 @@ class Showo2Qwen2_5(ModelMixin, ConfigMixin):
             only_denoise_last_image=False,
             max_seq_len=None,
             guidance_scale=0.0,
+            motion_mode=None,
             **kwargs,
     ):
         if guidance_scale > 0.0:
@@ -565,6 +631,7 @@ class Showo2Qwen2_5(ModelMixin, ConfigMixin):
                         first_frame_as_cond=first_frame_as_cond,
                         only_denoise_last_image=only_denoise_last_image,
                         guidance_scale=guidance_scale,
+                        motion_mode=motion_mode,
                         output_hidden_states=True,
                         max_seq_len=max_seq_len)
             v_cond, v_uncond = torch.chunk(v, 2)
@@ -582,6 +649,7 @@ class Showo2Qwen2_5(ModelMixin, ConfigMixin):
                         first_frame_as_cond=first_frame_as_cond,
                         only_denoise_last_image=only_denoise_last_image,
                         guidance_scale=guidance_scale,
+                        motion_mode=motion_mode,
                         output_hidden_states=True,
                         max_seq_len=max_seq_len)
             return v

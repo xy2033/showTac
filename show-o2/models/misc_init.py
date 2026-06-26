@@ -9,138 +9,16 @@ from transformers import AutoTokenizer
 
 
 def next_token_prediction(logits, labels, vocab_szie):
-    shifted_labels = labels[:, 1:].contiguous().view(-1)
-    if not (shifted_labels != -100).any():
-        return logits.sum() * 0.0
-    return F.cross_entropy(logits[:, :-1].contiguous().view(-1, vocab_szie), shifted_labels,
+    return F.cross_entropy(logits[:, :-1].contiguous().view(-1, vocab_szie), labels[:, 1:].contiguous().view(-1),
                            ignore_index=-100)
 
 
 def velocity_prediction(latents, labels, mask=None):
     if mask is not None:
-        valid = mask.bool()
-        if not valid.any():
-            return latents.sum() * 0.0
-        loss = F.mse_loss(latents, labels, reduction='none')[valid]
+        loss = F.mse_loss(latents, labels, reduction='none')[mask.bool()]
         return loss.mean()
     else:
         return F.mse_loss(latents, labels)
-
-
-def prepare_tactile_gen_input(
-        prompts,
-        text_tokenizer,
-        num_visual_tokens,
-        num_tactile_tokens,
-        bos_id,
-        bov_id,
-        eov_id,
-        pad_id,
-        vid_pad_id,
-        max_text_len,
-        device,
-):
-    """
-    Prepare token sequences and modality positions for tactile-video generation inference.
-
-    Builds for each prompt:
-        [BOS] {text} [BOV] {vid_pad * num_visual_tokens} [EOV] [BOV] {vid_pad * num_tactile_tokens} [EOV]
-
-    Also builds a null-text variant for classifier-free guidance (CFG).
-
-    Args:
-        prompts: List of text prompt strings.
-        text_tokenizer: HuggingFace tokenizer.
-        num_visual_tokens: Number of pad tokens for the condition visual video segment.
-        num_tactile_tokens: Number of pad tokens for the target tactile video segment.
-        bos_id, bov_id, eov_id, pad_id, vid_pad_id: Special token IDs.
-        max_text_len: Maximum text token length (before truncation).
-        device: Target device.
-
-    Returns:
-        batch_text_tokens: (B, seq_len) token IDs.
-        batch_text_tokens_null: (B, seq_len) null-text token IDs for CFG.
-        batch_modality_positions: (B, 2, 2) modality positions.
-        batch_modality_positions_null: (B, 2, 2) null-text modality positions.
-    """
-    batch_text_tokens = []
-    batch_modality_positions = []
-    batch_text_tokens_null = []
-    batch_modality_positions_null = []
-
-    for prompt in prompts:
-        text_tokens = text_tokenizer(prompt, add_special_tokens=False)['input_ids'][:max_text_len]
-        text_len = len(text_tokens)
-
-        # Visual video segment offset (after BOS + text + BOV)
-        visual_offset = text_len + 2
-        # Tactile video segment offset (after visual segment + EOV + BOV)
-        tactile_offset = visual_offset + num_visual_tokens + 2
-
-        modality_positions = torch.tensor([
-            [visual_offset, num_visual_tokens],
-            [tactile_offset, num_tactile_tokens],
-        ]).unsqueeze(0)  # (1, 2, 2)
-
-        # Build sequence
-        token_seq = (
-            [bos_id]
-            + text_tokens
-            + [bov_id] + [vid_pad_id] * num_visual_tokens + [eov_id]
-            + [bov_id] + [vid_pad_id] * num_tactile_tokens + [eov_id]
-        )
-        total_len = len(token_seq)
-        token_seq = token_seq + [pad_id] * (max_text_len - text_len + num_visual_tokens + num_tactile_tokens + 5 - total_len + max_text_len)
-
-        batch_text_tokens.append(torch.tensor(token_seq))
-        batch_modality_positions.append(modality_positions)
-
-        # Null text variant for CFG
-        text_tokens_null = []
-        visual_offset_null = 2  # BOS + empty text + BOV
-        tactile_offset_null = visual_offset_null + num_visual_tokens + 2
-
-        modality_positions_null = torch.tensor([
-            [visual_offset_null, num_visual_tokens],
-            [tactile_offset_null, num_tactile_tokens],
-        ]).unsqueeze(0)
-
-        token_seq_null = (
-            [bos_id]
-            + text_tokens_null
-            + [bov_id] + [vid_pad_id] * num_visual_tokens + [eov_id]
-            + [bov_id] + [vid_pad_id] * num_tactile_tokens + [eov_id]
-        )
-        total_len_null = len(token_seq_null)
-        token_seq_null = token_seq_null + [pad_id] * (max_text_len + num_visual_tokens + num_tactile_tokens + 5 - total_len_null + max_text_len)
-
-        batch_text_tokens_null.append(torch.tensor(token_seq_null))
-        batch_modality_positions_null.append(modality_positions_null)
-
-    # Pad all sequences to the same length
-    max_len = max(t.size(0) for t in batch_text_tokens)
-    max_len = max(max_len, max(t.size(0) for t in batch_text_tokens_null))
-    if max_len % 128 != 0:
-        max_len = (max_len // 128 + 1) * 128
-
-    padded_tokens = []
-    for t in batch_text_tokens:
-        if t.size(0) < max_len:
-            t = torch.cat([t, torch.full((max_len - t.size(0),), pad_id)])
-        padded_tokens.append(t)
-    batch_text_tokens = torch.stack(padded_tokens, dim=0).to(device)
-
-    padded_null = []
-    for t in batch_text_tokens_null:
-        if t.size(0) < max_len:
-            t = torch.cat([t, torch.full((max_len - t.size(0),), pad_id)])
-        padded_null.append(t)
-    batch_text_tokens_null = torch.stack(padded_null, dim=0).to(device)
-
-    batch_modality_positions = torch.cat(batch_modality_positions, dim=0).to(device)
-    batch_modality_positions_null = torch.cat(batch_modality_positions_null, dim=0).to(device)
-
-    return batch_text_tokens, batch_text_tokens_null, batch_modality_positions, batch_modality_positions_null
 
 
 def prepare_gen_input(prompts, text_tokenizer, num_image_tokens, bos_id, eos_id, boi_id, eoi_id, pad_id, img_pad_id,
